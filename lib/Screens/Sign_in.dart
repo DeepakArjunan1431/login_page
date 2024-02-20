@@ -1,5 +1,3 @@
-// import 'dart:js';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:login_page/Reusable%20Widgets/reusable_widgets.dart';
@@ -56,15 +54,13 @@ class _Sign_inState extends State<Sign_in> {
                 ),
                 forgetPassword(context),
                 firebaseUIButton(context, true, () {
-                  FirebaseAuth.instance
+                  return FirebaseAuth.instance
                       .signInWithEmailAndPassword(
                           email: _emailTextController.text,
                           password: _passwordTextController.text)
                       .then((value) {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const HomeScreen()));
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => HomeScreen()));
                   }).onError((error, stackTrace) {
                     print("Error ${error.toString()}");
                   });
