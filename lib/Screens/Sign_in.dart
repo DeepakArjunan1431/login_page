@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:login_page/Reusable%20Widgets/reusable_widgets.dart';
 import 'package:login_page/Screens/Home_Screen.dart';
 import 'package:login_page/Screens/Sign_up.dart';
@@ -7,7 +8,7 @@ import 'package:login_page/Screens/reset_password.dart';
 import 'package:login_page/utils/Colours.dart';
 
 class Sign_in extends StatefulWidget {
-  const Sign_in({super.key});
+  const Sign_in({Key? key});
 
   @override
   State<Sign_in> createState() => _Sign_inState();
@@ -16,62 +17,86 @@ class Sign_in extends StatefulWidget {
 class _Sign_inState extends State<Sign_in> {
   final TextEditingController _passwordTextController = TextEditingController();
   final TextEditingController _emailTextController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: MediaQuery.of(context).size.width,
-        height: MediaQuery.of(context).size.height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              hexStringtoColor("FFD180"), // Light orange at the top
-              hexStringtoColor("FFE5C4"), // Light skin color at the bottom
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-                20, MediaQuery.of(context).size.height * 0.2, 20, 0),
-            child: Column(
-              children: <Widget>[
-                LogoWidget("assets/images/app-store.png"),
-                const SizedBox(
-                  height: 30,
-                ),
-                reusableTextField("Enter UserName", Icons.person_outline, false,
-                    _emailTextController),
-                const SizedBox(
-                  height: 20,
-                ),
-                reusableTextField("Enter Password", Icons.lock_outline, true,
-                    _passwordTextController),
-                const SizedBox(
-                  height: 5,
-                ),
-                forgetPassword(context),
-                firebaseUIButton(context, true, () {
-                  return FirebaseAuth.instance
-                      .signInWithEmailAndPassword(
-                          email: _emailTextController.text,
-                          password: _passwordTextController.text)
-                      .then((value) {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => HomeScreen()));
-                  }).onError((error, stackTrace) {
-                    print("Error ${error.toString()}");
-                  });
-                }),
-                signUpOption(context)
+    return WillPopScope(
+      onWillPop: _showQuitConfirmationDialog,
+      child: Scaffold(
+        body: Container(
+          width: MediaQuery.of(context).size.width,
+          height: MediaQuery.of(context).size.height,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                hexStringtoColor("FFD180"), // Light orange at the top
+                hexStringtoColor("FFE5C4"), // Light skin color at the bottom
               ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                  20, MediaQuery.of(context).size.height * 0.2, 20, 0),
+              child: Column(
+                children: <Widget>[
+                  LogoWidget("assets/images/app-store.png"),
+                  const SizedBox(
+                    height: 30,
+                  ),
+                  reusableTextField("Enter UserName", Icons.person_outline,
+                      false, _emailTextController),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  reusableTextField("Enter Password", Icons.lock_outline, true,
+                      _passwordTextController),
+                  const SizedBox(
+                    height: 5,
+                  ),
+                  forgetPassword(context),
+                  firebaseUIButton(context, true, () {
+                    return FirebaseAuth.instance
+                        .signInWithEmailAndPassword(
+                      email: _emailTextController.text,
+                      password: _passwordTextController.text,
+                    )
+                        .then((value) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeScreen(),
+                        ),
+                      );
+                    }).onError((error, stackTrace) {
+                      print("Error ${error.toString()}");
+                    });
+                  }),
+                  signUpOption(context)
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<bool> _showQuitConfirmationDialog() async {
+    final bool? result = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return QuitConfirmationDialog();
+      },
+    );
+
+    if (result != null && result) {
+      // Exit the application
+      SystemNavigator.pop();
+    }
+    return result ?? false;
   }
 }
 
@@ -107,8 +132,10 @@ Widget forgetPassword(BuildContext context) {
         style: TextStyle(color: Colors.black),
         textAlign: TextAlign.right,
       ),
-      onPressed: () => Navigator.push(context,
-          MaterialPageRoute(builder: (context) => const ResetPassword())),
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ResetPassword()),
+      ),
     ),
   );
 }

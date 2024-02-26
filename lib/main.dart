@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:login_page/Screens/Sign_in.dart';
+import 'package:login_page/Screens/SplashScreen.dart';
 import 'package:login_page/firebase_options.dart';
 
 void main() async {
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const Sign_in(),
+      home: const SplashScreen(),
     );
   }
 }
