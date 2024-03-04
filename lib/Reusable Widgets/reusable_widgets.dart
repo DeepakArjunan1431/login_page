@@ -77,3 +77,29 @@ Container firebaseUIButton(BuildContext context, bool isLogin, Function onTap) {
     ),
   );
 }
+
+class PlayerWidget extends StatelessWidget {
+  final String name;
+  final String role;
+  final String imageUrl;
+
+  PlayerWidget({
+    required this.name,
+    required this.role,
+    required this.imageUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: NetworkImage(imageUrl),
+      ),
+      title: Text(
+        name,
+        style: TextStyle(fontSize: 16),
+      ),
+      subtitle: Text(role),
+    );
+  }
+}

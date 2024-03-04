@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:login_page/Screens/Sign_in.dart';
+import 'package:login_page/utils/Colours.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -89,6 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       return Scaffold(
         appBar: AppBar(
+          backgroundColor: Color(0xFFFFD180),
           title: Text('Profile'),
           actions: [
             IconButton(
@@ -99,12 +101,245 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text('Username: ${_userData['username']}'),
-            Text('Email: ${_user!.email}'),
-          ],
+        body: Container(
+          width: double.infinity,
+          // Your existing UI code
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                hexStringtoColor("FFD180"), // Light orange at the top
+                hexStringtoColor("FFE5C4"), // Light skin color at the bottom
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          padding: EdgeInsets.only(left: 16, top: 30, right: 16),
+          child: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: ListView(
+              children: [
+                Center(
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            image: DecorationImage(
+                              fit: BoxFit.cover,
+                              image: AssetImage("assets/images/app-store.png"),
+                            )),
+                      ),
+                      Positioned(
+                        top: 60,
+                        // bottom: 10,
+                        right: 0,
+                        child: Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              width: 4,
+                              color: Colors.green,
+                            ),
+                            color: Colors.green,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProfileScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                Column(
+                  children: [
+                    Text(
+                      ' ${_userData['username']}',
+                      style: TextStyle(
+                        fontSize: 16, // Adjust the font size as needed
+                        color: Colors.black, // Adjust the font color as needed
+                      ),
+                    ),
+                    Text(
+                      ' ${_user!.email}',
+                      style: TextStyle(
+                        fontSize: 16, // Adjust the font size as needed
+                        color: Colors.black, // Adjust the font color as needed
+                      ),
+                    ),
+
+                    SizedBox(
+                      height: 30,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              "50",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "Posts",
+                              style: TextStyle(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              "550",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "Followers",
+                              style: TextStyle(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              "750",
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              "Followings",
+                              style: TextStyle(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(
+                      height: 30,
+                    ),
+                    Center(
+                      child: Container(
+                        width: 150,
+                        child: ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green),
+                            child: Text(
+                              "Follow",
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  letterSpacing: 2.2,
+                                  color: Colors.black),
+                            )),
+                      ),
+                    ),
+                    // SizedBox(
+                    //   height: 20,
+                    // ),
+                    // MyGridView(),
+                    Container(
+                      color: Colors.grey,
+                    ),
+                  ],
+                ),
+                // SizedBox(
+                //   height: 30,
+                // ),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.spaceAround,
+                //   children: [
+                //     ElevatedButton(
+                //       onPressed: () {},
+                //       child: Text('Posts'),
+                //     ),
+                //     ElevatedButton(
+                //       onPressed: () {},
+                //       child: Text('Videos'),
+                //     ),
+                //     ElevatedButton(
+                //       onPressed: () {},
+                //       child: Text('Tags'),
+                //     ),
+                //   ],
+                // ),
+                SizedBox(
+                  height: 25,
+                ),
+                // Expanded(
+                //   child: MyGridView(), // Initially show the Post grid
+                // ),
+                Center(
+                  child: Text(
+                    'Selected Teams:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black,
+                      // textAlign: TextAlign.center, // Align the text center
+                    ),
+                  ),
+                ),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  children: (_userData['selected_teams'] as List<dynamic>)
+                      .map((team) {
+                    return Card(
+                      margin: EdgeInsets.all(8.0),
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Center(
+                          child: Text(
+                            team,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }

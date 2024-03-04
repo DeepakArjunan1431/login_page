@@ -13,9 +13,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -25,7 +24,23 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      home: FutureBuilder(
+        future: Firebase.initializeApp(),
+        builder: (context, AsyncSnapshot snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            // Return a loading indicator while Firebase initializes
+            return CircularProgressIndicator();
+          } else {
+            if (snapshot.hasError) {
+              // Handle error if Firebase initialization fails
+              return Text('Error initializing Firebase');
+            } else {
+              // Check authentication state
+              return SplashScreen(); // You may change this to your initial loading screen
+            }
+          }
+        },
+      ),
     );
   }
 }

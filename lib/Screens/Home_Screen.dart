@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
@@ -114,10 +116,13 @@ class QuitConfirmationDialog extends StatelessWidget {
           child: Text('Cancel'),
         ),
         TextButton(
-          onPressed: () {
-            Navigator.of(context)
-                .pop(true); // Dismiss the dialog and return true
-          },
+          // onPressed: ()
+          //  {
+          //   Navigator.of(context)
+          //       .pop(true); // Dismiss the dialog and return true
+          // },
+          onPressed: () =>
+              SystemChannels.platform.invokeMethod('SystemNavigator.pop'),
           child: Text('Quit'),
         ),
       ],

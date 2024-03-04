@@ -1,11 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:login_page/Reusable%20Widgets/reusable_widgets.dart';
 import 'package:login_page/Screens/Home_Screen.dart';
 import 'package:login_page/Screens/Sign_up.dart';
 import 'package:login_page/Screens/reset_password.dart';
 import 'package:login_page/utils/Colours.dart';
+import 'package:login_page/Reusable%20Widgets/reusable_widgets.dart';
 
 class Sign_in extends StatefulWidget {
   const Sign_in({Key? key});
@@ -17,6 +17,27 @@ class Sign_in extends StatefulWidget {
 class _Sign_inState extends State<Sign_in> {
   final TextEditingController _passwordTextController = TextEditingController();
   final TextEditingController _emailTextController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check if user is already signed in
+    // checkCurrentUser();
+  }
+
+  void checkCurrentUser() {
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user != null) {
+        // User is signed in
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(),
+          ),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +85,7 @@ class _Sign_inState extends State<Sign_in> {
                       password: _passwordTextController.text,
                     )
                         .then((value) {
-                      Navigator.push(
+                      Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (context) => HomeScreen(),
@@ -138,4 +159,39 @@ Widget forgetPassword(BuildContext context) {
       ),
     ),
   );
+}
+
+// void main() {
+//   runApp(MaterialApp(
+//     home: Sign_in(),
+//   ));
+// }
+
+class QuitConfirmationDialog extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Quit Application'),
+      content: Text('Are you sure you want to quit the application?'),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () {
+            Navigator.of(context)
+                .pop(false); // Dismiss the dialog and return false
+          },
+          child: Text('Cancel'),
+        ),
+        TextButton(
+          // onPressed: ()
+          //  {
+          //   Navigator.of(context)
+          //       .pop(true); // Dismiss the dialog and return true
+          // },
+          onPressed: () =>
+              SystemChannels.platform.invokeMethod('SystemNavigator.pop'),
+          child: Text('Quit'),
+        ),
+      ],
+    );
+  }
 }
