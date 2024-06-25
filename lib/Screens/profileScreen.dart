@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:login_page/Screens/Home_Screen.dart';
 import 'package:login_page/Screens/Sign_in.dart';
 import 'package:login_page/utils/Colours.dart';
 
@@ -103,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         body: Container(
           width: double.infinity,
-          // Your existing UI code
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -121,221 +121,469 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
             child: ListView(
               children: [
-                Center(
-                  child: Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              fit: BoxFit.cover,
-                              image: AssetImage("assets/images/app-store.png"),
-                            )),
-                      ),
-                      Positioned(
-                        top: 60,
-                        // bottom: 10,
-                        right: 0,
-                        child: Container(
-                          height: 40,
-                          width: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              width: 4,
-                              color: Colors.green,
-                            ),
-                            color: Colors.green,
-                          ),
-                          child: IconButton(
-                            icon: Icon(
-                              Icons.edit,
-                              color: Colors.white,
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProfileScreen(),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 20,
-                ),
-                Column(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      ' ${_userData['username']}',
-                      style: TextStyle(
-                        fontSize: 16, // Adjust the font size as needed
-                        color: Colors.black, // Adjust the font color as needed
+                    Container(
+                      width: 100,
+                      height: 100,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 75,
+                            height: 75,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              image: DecorationImage(
+                                fit: BoxFit.cover,
+                                image:
+                                    AssetImage("assets/images/app-store.png"),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 40,
+                            bottom: 0,
+                            right: 25,
+                            child: Container(
+                              height: 40,
+                              width: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.brown[900],
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.edit,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  // Add your onPressed logic here
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Text(
-                      ' ${_user!.email}',
-                      style: TextStyle(
-                        fontSize: 16, // Adjust the font size as needed
-                        color: Colors.black, // Adjust the font color as needed
-                      ),
-                    ),
-
-                    SizedBox(
-                      height: 30,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          children: [
-                            Text(
-                              "50",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Posts",
-                              style: TextStyle(
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          '${_userData['username']}',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
-                        Column(
-                          children: [
-                            Text(
-                              "550",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              "Followers",
-                              style: TextStyle(
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          '${_user!.email}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.black,
+                          ),
                         ),
-                        Column(
+                        SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            Text(
-                              "750",
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Column(
+                              children: [
+                                Text(
+                                  "50",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Friends",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              "Followings",
-                              style: TextStyle(
-                                color: Colors.grey,
-                              ),
+                            SizedBox(width: 10),
+                            Column(
+                              children: [
+                                Text(
+                                  "550",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Followers",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(width: 10),
+                            Column(
+                              children: [
+                                Text(
+                                  "750",
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  "Followings",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ],
                     ),
-                    SizedBox(
-                      height: 30,
-                    ),
-                    Center(
-                      child: Container(
-                        width: 150,
-                        child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green),
-                            child: Text(
-                              "Follow",
-                              style: TextStyle(
-                                  fontSize: 16,
-                                  letterSpacing: 2.2,
-                                  color: Colors.black),
-                            )),
-                      ),
-                    ),
-                    // SizedBox(
-                    //   height: 20,
-                    // ),
-                    // MyGridView(),
-                    Container(
-                      color: Colors.grey,
-                    ),
                   ],
                 ),
-                // SizedBox(
-                //   height: 30,
-                // ),
-                // Row(
-                //   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                //   children: [
-                //     ElevatedButton(
-                //       onPressed: () {},
-                //       child: Text('Posts'),
-                //     ),
-                //     ElevatedButton(
-                //       onPressed: () {},
-                //       child: Text('Videos'),
-                //     ),
-                //     ElevatedButton(
-                //       onPressed: () {},
-                //       child: Text('Tags'),
-                //     ),
-                //   ],
-                // ),
-                SizedBox(
-                  height: 25,
-                ),
-                // Expanded(
-                //   child: MyGridView(), // Initially show the Post grid
-                // ),
+                SizedBox(height: 30),
                 Center(
-                  child: Text(
-                    'Selected Teams:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black,
-                      // textAlign: TextAlign.center, // Align the text center
+                  child: Container(
+                    width: 150,
+                    child: ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.brown[900],
+                      ),
+                      child: Text(
+                        "Follow",
+                        style: TextStyle(
+                          fontSize: 16,
+                          letterSpacing: 2.2,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
+                ),
+                SizedBox(height: 30),
+                Row(
+                  children: [
+                    Padding(padding: EdgeInsets.all(4)),
+                    Center(
+                      child: Text(
+                        'Selected Teams:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 GridView.count(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
                   crossAxisCount: 2,
                   children: (_userData['selected_teams'] as List<dynamic>)
+                      .take(2) // Take only the first 2 teams
                       .map((team) {
                     return Card(
                       margin: EdgeInsets.all(8.0),
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0),
+                      child: SizedBox(
+                        width: 150, // Set the width of the card
+                        height: 150, // Set the height of the card
                         child: Center(
-                          child: Text(
-                            team,
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.black,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              team,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2, // Adjust max lines as per your need
+                              overflow: TextOverflow
+                                  .ellipsis, // Adjust overflow behavior
                             ),
                           ),
                         ),
                       ),
                     );
                   }).toList(),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Container(
+                        padding: EdgeInsets.all(10),
+                        color: Colors.transparent,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Skill Score',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.black,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            // Add your card widget here
+                            GestureDetector(
+                              onTap: () {
+                                // Navigation logic here
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => HomeScreen()),
+                                );
+                              },
+                              child: Card(
+                                color: Colors.white,
+                                child: Container(
+                                  padding: EdgeInsets.all(10),
+                                  child: Column(
+                                    children: [
+                                      // Box 1: Image
+                                      Container(
+                                        padding: EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.transparent),
+                                        ),
+                                        child: Image.asset(
+                                          'assets/images/app-store.png', // Replace with your image path
+                                          fit: BoxFit.contain,
+                                          scale: 10,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                          height:
+                                              10), // Adjust the height between the boxes as needed
+                                      // Box 2: Text
+                                      Container(
+                                        padding: EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Colors.transparent),
+                                        ),
+                                        child: Text(
+                                          'What is your skill score?',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 6,
+                      child: Container(
+                        padding: EdgeInsets.all(10),
+                        color: Colors.transparent,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Career Stats',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: Colors.black,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            // Add your card widget here
+                            GestureDetector(
+                              onTap: () {
+                                // Navigation logic for the entire card
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => HomeScreen()),
+                                );
+                              },
+                              child: Card(
+                                color: Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          _buildBox('Contests', '1'),
+                                          _buildBox('Matches', '1'),
+                                        ],
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          _buildBox('Series', '1'),
+                                          _buildBox('Sports', '1'),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Padding(padding: EdgeInsets.all(4)),
+                    Center(
+                      child: Text(
+                        'Selected Teams:',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Card(
+                  color: Colors.white,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 8.0), // Padding for the first row
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Team 1 vs Team 2',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                            Column(
+                              children: [
+                                Text(
+                                  'Cricket',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  'Held in',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Container(
+                        color: Colors.grey.withOpacity(
+                            0.2), // Set the desired background color
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    'Highest Points',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    ' 749 pnts',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      'Team Created',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      '001',
+                                      textAlign: TextAlign.right,
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Container(
+                        color: Colors.pink.withOpacity(
+                            0.2), // Set the desired background color
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    'Points Scored:1000',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -344,4 +592,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
+}
+
+Widget _buildBox(String title, String value) {
+  return Expanded(
+    child: Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.black),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 5),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.black,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _build1Box(String text) {
+  return Container(
+    padding: EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.black),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    ),
+  );
 }

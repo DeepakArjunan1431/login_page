@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:login_page/Models/Model.dart';
+import 'matchdetails.dart'; // Import the new file
 
 class Livematches extends StatefulWidget {
   final String apiUrl =
@@ -44,6 +45,9 @@ class _LivematchesState extends State<Livematches> {
           .expand((element) => element)
           .toList();
       return teamNames;
+    } else if (response.statusCode == 204) {
+      // Handle the 204 No Content status code
+      return [];
     } else {
       throw Exception(
           'Failed to fetch data. Status code: ${response.statusCode}');
@@ -77,7 +81,7 @@ class _LivematchesState extends State<Livematches> {
                 } else if (snapshot.hasData) {
                   final teamNames = snapshot.data!;
                   if (teamNames.isEmpty) {
-                    return Center(child: Text('No team names available'));
+                    return Center(child: Text('No live matches available'));
                   } else {
                     return ListView.builder(
                       itemCount: teamNames.length,
@@ -100,9 +104,24 @@ class _LivematchesState extends State<Livematches> {
                                 Text('Match details here'), // Add match details
                             trailing: ElevatedButton(
                               onPressed: () {
-                                // Handle actions when this button is pressed
+                                // Navigator.push(
+                                //   context,
+                                //   // MaterialPageRoute(
+                                //   //   builder: (context) => MatchDetailsPage(
+                                //   //     team1Name: team1Name,
+                                //   //     team2Name: team2Name,
+                                //   //     // matchId: matchId,
+                                //   //   ),
+                                //   // ),
+                                // );
                               },
-                              child: Text('Join'), // Customize the button text
+                              child: Text(
+                                'Join',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
                             ),
                           ),
                         );

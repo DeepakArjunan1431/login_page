@@ -421,3 +421,17 @@ class EnumValues<T> {
     return reverseMap;
   }
 }
+
+class matchdata{
+  final int matchId;
+  final String team1;
+  final String team2;
+  const matchdata({
+    required this.matchId,
+    required this.team1,
+    required this.team2,
+    // required this.imageId,
+  });
+ 
+}
+
