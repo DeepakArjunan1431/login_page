@@ -15,7 +15,10 @@ class MatchDetailsPage extends StatefulWidget {
   });
 
   @override
-  _MatchDetailsPageState createState() => _MatchDetailsPageState();
+  _MatchDetailsPageState createState() {
+    print('Creating MatchDetailsPage state with matchId: $matchId');
+    return _MatchDetailsPageState();
+  }
 }
 
 class _MatchDetailsPageState extends State<MatchDetailsPage> {
@@ -24,78 +27,187 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   @override
   void initState() {
     super.initState();
+    print('Initializing MatchDetailsPage state with matchId: ${widget.matchId}');
     _initializePools();
     _fetchMaxSlotsForPools();
   }
 
   Future<void> _initializePools() async {
-    await FirebaseFirestore.instance.collection('Pool').doc('Pool').set({
-      'max_size': 100,
-      'matches': {}
-    }, SetOptions(merge: true));
+    try {
+      List<String> poolTypes = ['Pool', 'LargePool', 'MiniPool'];
 
-    await FirebaseFirestore.instance.collection('Pool').doc('LargePool').set({
-      'max_size': 50,
-      'matches': {}
-    }, SetOptions(merge: true));
+      for (String poolType in poolTypes) {
+        DocumentSnapshot poolDoc = await FirebaseFirestore.instance.collection('Pool').doc(poolType).get();
 
-    await FirebaseFirestore.instance.collection('Pool').doc('MiniPool').set({
-      'max_size': 25,
-      'matches': {}
-    }, SetOptions(merge: true));
+        if (!poolDoc.exists) {
+          print('Creating new pool document for $poolType');
+          await FirebaseFirestore.instance.collection('Pool').doc(poolType).set({
+            'max_size': _getMaxSizeForPoolType(poolType),
+            'matches': {}
+          });
+        }
+
+        Map<String, dynamic> existingData = poolDoc.data() as Map<String, dynamic>? ?? {};
+        Map<String, dynamic> matches = existingData['matches'] ?? {};
+
+        matches[widget.matchId] = {
+          ...matches[widget.matchId] ?? {},
+          'team1': widget.team1Name,
+          'team2': widget.team2Name,
+        };
+
+        print('Ensuring match ${widget.matchId} exists in $poolType');
+        await FirebaseFirestore.instance.collection('Pool').doc(poolType).set({
+          'matches': matches,
+        }, SetOptions(merge: true));
+      }
+    } catch (e, stackTrace) {
+      print('Error initializing pools: $e');
+      print('Stack trace: $stackTrace');
+    }
   }
 
- Future<void> _fetchMaxSlotsForPools() async {
-  try {
-    List<String> poolDocs = ['Pool', 'LargePool', 'MiniPool'];
-    List<Map<String, dynamic>> fetchedPools = [];
+  Future<void> _fetchMaxSlotsForPools() async {
+    print('Fetching max slots for pools. MatchId: ${widget.matchId}');
+    try {
+      List<String> poolDocs = ['Pool', 'LargePool', 'MiniPool'];
+      List<Map<String, dynamic>> fetchedPools = [];
 
-    for (String poolDoc in poolDocs) {
-      DocumentSnapshot poolSnapshot = await FirebaseFirestore.instance
-          .collection('Pool')
-          .doc(poolDoc)
-          .get();
+      for (String poolDoc in poolDocs) {
+        DocumentSnapshot poolSnapshot = await FirebaseFirestore.instance
+            .collection('Pool')
+            .doc(poolDoc)
+            .get();
 
-      Map<String, dynamic> data = poolSnapshot.data() as Map<String, dynamic>;
-      
-      String poolType;
-      if (poolDoc == 'Pool') poolType = 'Mega Pool';
-      else if (poolDoc == 'LargePool') poolType = 'Large Pool';
-      else poolType = 'Mini Pool';
+        if (!poolSnapshot.exists) {
+          print('Pool document $poolDoc does not exist');
+          continue;
+        }
 
-      var matchData = data['matches']?[widget.matchId];
-      
-      if (matchData is Map) {
-        matchData.forEach((poolName, poolData) {
-          fetchedPools.add({
-            'name': poolName,
-            'joinedSlots': poolData['slots'] ?? 0,
-            'totalSlots': data['max_size'] ?? 0,
+        Map<String, dynamic> data = poolSnapshot.data() as Map<String, dynamic>;
+
+        String poolType = _getPoolTypeName(poolDoc);
+        int maxSize = _getMaxSizeForPoolType(poolDoc);
+
+        if (!data.containsKey('matches')) {
+          print('Matches key not found in $poolDoc');
+          continue;
+        }
+
+        Map<String, dynamic> matchData = data['matches'][widget.matchId] ?? {};
+        print('Raw match data for ${widget.matchId} in $poolDoc: $matchData');
+
+        List<Map<String, dynamic>> poolsOfType = [];
+
+        if (matchData.isNotEmpty) {
+          matchData.forEach((poolName, poolData) {
+            if (poolName != 'team1' && poolName != 'team2') {
+              print('Raw pool data for $poolName: $poolData');
+              int joinedSlots = 0;
+              if (poolData is Map && poolData.containsKey('slots')) {
+                var slots = poolData['slots'];
+                if (slots is int) {
+                  joinedSlots = slots;
+                } else if (slots is String) {
+                  joinedSlots = int.tryParse(slots) ?? 0;
+                } else {
+                  print('Unexpected type for slots: ${slots.runtimeType}');
+                }
+              }
+              // Only add pools that are not full
+              if (joinedSlots < maxSize) {
+                poolsOfType.add({
+                  'name': poolName,
+                  'joinedSlots': joinedSlots,
+                  'totalSlots': maxSize,
+                  'type': poolType,
+                });
+              }
+            }
+          });
+        }
+
+        // If no pools of this type or all are full, create a new one
+        if (poolsOfType.isEmpty) {
+          int newIndex = (matchData.keys.where((k) => k.startsWith(poolType)).length + 1);
+          String newPoolName = '$poolType $newIndex';
+          poolsOfType.add({
+            'name': newPoolName,
+            'joinedSlots': 0,
+            'totalSlots': maxSize,
             'type': poolType,
           });
-        });
-      } else {
-        // If no pools exist for this match, create the first one
-        fetchedPools.add({
-          'name': '$poolType 1',
-          'joinedSlots': 0,
-          'totalSlots': data['max_size'] ?? 0,
-          'type': poolType,
-        });
+
+          // Create the new pool in Firestore
+          await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
+            'matches': {
+              widget.matchId: {
+                newPoolName: {
+                  'slots': 0,
+                  'userJoins': {}
+                }
+              }
+            }
+          }, SetOptions(merge: true));
+        }
+
+        fetchedPools.addAll(poolsOfType);
       }
+
+      fetchedPools.sort((a, b) => a['name'].compareTo(b['name']));
+
+      setState(() {
+        pools = fetchedPools;
+      });
+
+      print('Fetched pools: $fetchedPools');
+
+    } catch (e, stackTrace) {
+      print('Error fetching pool data: $e');
+      print('Stack trace: $stackTrace');
     }
-
-    // Sort pools by name to ensure they're in order
-    fetchedPools.sort((a, b) => a['name'].compareTo(b['name']));
-
-    setState(() {
-      pools = fetchedPools;
-    });
-  } catch (e) {
-    print('Error fetching pool data: $e');
   }
-}
- Future<String> getCurrentUserId() async {
+
+  int _getMaxSizeForPoolType(String poolType) {
+    switch (poolType) {
+      case 'Pool':
+        return 100;
+      case 'LargePool':
+        return 50;
+      case 'MiniPool':
+        return 25;
+      default:
+        return 0;
+    }
+  }
+
+  String _getPoolTypeName(String poolType) {
+    switch (poolType) {
+      case 'Pool':
+        return 'Mega Pool';
+      case 'LargePool':
+        return 'Large Pool';
+      case 'MiniPool':
+        return 'Mini Pool';
+      default:
+        return '';
+    }
+  }
+
+  String _getPoolDocName(String poolType) {
+    switch (poolType) {
+      case 'Mega Pool':
+        return 'Pool';
+      case 'Large Pool':
+        return 'LargePool';
+      case 'Mini Pool':
+        return 'MiniPool';
+      default:
+        return '';
+    }
+  }
+
+  Future<String> getCurrentUserId() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       return user.uid;
@@ -104,111 +216,58 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
-void _navigateToJoinPool(int index) async {
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => JoinPoolPage(
-        poolName: pools[index]['name'],
-        joinedSlots: pools[index]['joinedSlots'],
-        totalSlots: pools[index]['totalSlots'],
+  void _navigateToJoinPool(String poolName, int joinedSlots, int totalSlots, String poolType) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JoinPoolPage(
+          poolName: poolName,
+          joinedSlots: joinedSlots,
+          totalSlots: totalSlots,
+        ),
       ),
-    ),
-  );
+    );
 
-  if (result == true) {
-    try {
-      String userId = await getCurrentUserId();
+    if (result == true) {
+      try {
+        String userId = await getCurrentUserId();
+        String poolDoc = _getPoolDocName(poolType);
 
-      String poolDoc;
-      if (pools[index]['type'] == 'Mega Pool') {
-        poolDoc = 'Pool';
-      } else if (pools[index]['type'] == 'Large Pool') {
-        poolDoc = 'LargePool';
-      } else if (pools[index]['type'] == 'Mini Pool') {
-        poolDoc = 'MiniPool';
-      } else {
-        print('Unknown pool type');
-        return;
-      }
+        if (joinedSlots >= totalSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('This pool has reached its maximum capacity.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
 
-      // Check if the pool has reached its maximum capacity
-      if (pools[index]['joinedSlots'] >= pools[index]['totalSlots']) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('This pool has reached its maximum capacity.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // If the pool is not full, proceed with joining
-      await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
-        'matches': {
-          widget.matchId: {
-            pools[index]['name']: {
-              'slots': FieldValue.increment(1),
-              'userJoins': {
-                userId: FieldValue.increment(1)
+        await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
+          'matches': {
+            widget.matchId: {
+              poolName: {
+                'slots': FieldValue.increment(1),
+                'userJoins': {
+                  userId: FieldValue.increment(1)
+                }
               }
             }
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
 
-      setState(() {
-        pools[index]['joinedSlots']++;
-        if (pools[index]['joinedSlots'] == pools[index]['totalSlots']) {
-          _createNewPool(pools[index]['type']);
-        }
-      });
+        // Refresh the pools data, which will hide full pools and create new ones if needed
+        await _fetchMaxSlotsForPools();
 
-    } catch (e) {
-      print('Error updating Firebase: $e');
-      // You might want to show an error message to the user here
-    }
-  }
-}
-  void _createNewPool(String poolType) {
-  int newIndex = pools.where((pool) => pool['type'] == poolType).length + 1;
-  String newPoolName = '$poolType $newIndex';
-  int totalSlots = pools.firstWhere((pool) => pool['type'] == poolType)['totalSlots'];
-
-  setState(() {
-    pools.add({
-      'name': newPoolName,
-      'joinedSlots': 0,
-      'totalSlots': totalSlots,
-      'type': poolType,
-    });
-    // Sort pools to ensure they're in order
-    pools.sort((a, b) => a['name'].compareTo(b['name']));
-  });
-
-  // Create the new pool in Firestore
-  String poolDoc;
-  if (poolType == 'Mega Pool') {
-    poolDoc = 'Pool';
-  } else if (poolType == 'Large Pool') {
-    poolDoc = 'LargePool';
-  } else {
-    poolDoc = 'MiniPool';
-  }
-
-  FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
-    'matches': {
-      widget.matchId: {
-        newPoolName: {
-          'slots': 0,
-          'userJoins': {}
-        }
+      } catch (e) {
+        print('Error updating Firebase: $e');
       }
     }
-  }, SetOptions(merge: true));
-}
+  }
+
   @override
   Widget build(BuildContext context) {
+    print('Building MatchDetailsPage with matchId: ${widget.matchId}');
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70.0),
@@ -291,7 +350,12 @@ void _navigateToJoinPool(int index) async {
                         ),
                       ),
                       ElevatedButton(
-                        onPressed: () => _navigateToJoinPool(index),
+                        onPressed: () => _navigateToJoinPool(
+                          pools[index]['name'],
+                          pools[index]['joinedSlots'],
+                          pools[index]['totalSlots'],
+                          pools[index]['type'],
+                        ),
                         child: Text(
                           'Join',
                           style: TextStyle(
