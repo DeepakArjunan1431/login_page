@@ -426,9 +426,11 @@ class matchdata{
   final int matchId;
   final int teamId1;
   final int teamId2;
+  final String state;
 
   final String team1;
   final String team2;
+
   const matchdata({
     required this.teamId1,
     required this.teamId2,
@@ -436,6 +438,7 @@ class matchdata{
     required this.matchId,
     required this.team1,
     required this.team2,
+    required this.state,
     // required this.imageId,
   });
  

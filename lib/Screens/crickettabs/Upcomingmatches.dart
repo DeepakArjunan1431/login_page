@@ -35,12 +35,14 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
       final matchDetails = parsedData.typeMatches
           .expand((typeMatch) => typeMatch.seriesMatches)
           .expand((seriesMatch) => seriesMatch.seriesAdWrapper?.matches ?? [])
+          .where((match) => match.matchInfo.state.toLowerCase() != "upcoming")
           .map((match) {
             final team1Name = match.matchInfo.team1?.teamName ?? 'Unknown';
             final team2Name = match.matchInfo.team2?.teamName ?? 'Unknown';
             final matchId = match.matchInfo.matchId;
             final teamId1 = match.matchInfo.team1?.teamId ?? 0;
             final teamId2 = match.matchInfo.team2?.teamId ?? 0;
+            final state = match.matchInfo.state;
 
             return matchdata(
               matchId: matchId,
@@ -48,6 +50,7 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
               teamId2: teamId2,
               team1: team1Name,
               team2: team2Name,
+              state: state,
             );
           }).toList();
 
@@ -99,7 +102,13 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
                               '${matchDetail.team1} vs ${matchDetail.team2}',
                               style: TextStyle(fontSize: 16),
                             ),
-                            subtitle: Text('Team ID: ${matchDetail.teamId1} vs ${matchDetail.teamId2}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Team ID: ${matchDetail.teamId1} vs ${matchDetail.teamId2}'),
+                                Text('State: ${matchDetail.state}'),
+                              ],
+                            ),
                             trailing: ElevatedButton(
                               onPressed: () {
                                 Navigator.push(
@@ -109,10 +118,8 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
                                       team1Name: matchDetail.team1,
                                       team2Name: matchDetail.team2,
                                       matchId: matchDetail.matchId.toString(),
-                                       teamId1: matchDetail.teamId1,
+                                      teamId1: matchDetail.teamId1,
                                       teamId2: matchDetail.teamId2,
-                                     
-
                                     ),
                                   ),
                                 );
@@ -140,4 +147,22 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
       ),
     );
   }
+}
+
+class matchdata {
+  final int matchId;
+  final int teamId1;
+  final int teamId2;
+  final String team1;
+  final String team2;
+  final String state;
+
+  const matchdata({
+    required this.matchId,
+    required this.teamId1,
+    required this.teamId2,
+    required this.team1,
+    required this.team2,
+    required this.state,
+  });
 }

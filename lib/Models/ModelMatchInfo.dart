@@ -594,33 +594,61 @@ class EnumValues<T> {
 class TeamDetails {
   final int id;
   final int teamId;
-  final String name;
+  final String name; // <-- The attribute you want to fetch
   final String shortName;
-  final List<String>fullName;
+  final List<PlayerDetails> playerDetails;
 
   TeamDetails({
     required this.id,
     required this.teamId,
     required this.name,
     required this.shortName,
-    required this.fullName,
+    required this.playerDetails,
   });
 
-  factory TeamDetails.fromTeam(Team team) {
+  factory TeamDetails.fromJson(Map<String, dynamic> json) {
     return TeamDetails(
-      id: team.id,
-      teamId: team.id, // Using the same id as teamId, as the Team model doesn't have a separate teamId
-      name: team.name.toString(),
-      shortName: team.shortName,
-     fullName: team.playerDetails.map((player) => player.fullName).toList(),
+      id: json['id'],
+      teamId: json['teamId'],
+      name: json['name'],
+      shortName: json['shortName'],
+      playerDetails: (json['playerDetails'] as List)
+          .map((player) => PlayerDetails.fromJson(player))
+          .toList(),
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    "id": id,
-    "teamId": teamId,
-    "name": name,
-    "shortName": shortName,
-    "playerFullNames": fullName,
-  };
+  static String getNameFromJson(Map<String, dynamic> json) {
+    return json['name'];
+  }
+}
+
+
+class PlayerDetails {
+  final int id;
+  final String fullName;
+  final String nickName;
+  final bool captain;
+  final bool keeper;
+  final bool substitute;
+
+  PlayerDetails({
+    required this.id,
+    required this.fullName,
+    required this.nickName,
+    required this.captain,
+    required this.keeper,
+    required this.substitute,
+  });
+
+  factory PlayerDetails.fromJson(Map<String, dynamic> json) {
+    return PlayerDetails(
+      id: json['id'],
+      fullName: json['fullName'],
+      nickName: json['nickName'] ?? '',
+      captain: json['captain'] ?? false,
+      keeper: json['keeper'] ?? false,
+      substitute: json['substitute'] ?? false,
+    );
+  }
 }
