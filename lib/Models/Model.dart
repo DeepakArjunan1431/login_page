@@ -424,9 +424,15 @@ class EnumValues<T> {
 
 class matchdata{
   final int matchId;
+  final int teamId1;
+  final int teamId2;
+
   final String team1;
   final String team2;
   const matchdata({
+    required this.teamId1,
+    required this.teamId2,
+
     required this.matchId,
     required this.team1,
     required this.team2,
@@ -435,3 +441,56 @@ class matchdata{
  
 }
 
+class MatchDetails {
+  final int matchId;
+  final int teamId1;
+  final int teamId2;
+
+
+  final String team1;
+  final String team2;
+  final List<String> team1Players;
+  final List<String> team2Players;
+
+  MatchDetails({
+    required this.matchId,
+    required this.teamId1,
+    required this.teamId2,
+
+
+    required this.team1,
+    required this.team2,
+    required this.team1Players,
+    required this.team2Players,
+  });
+
+  factory MatchDetails.fromJson(Map<String, dynamic> json) {
+    return MatchDetails(
+      matchId: json['matchId'],
+      teamId1: json['teamId1'],
+      teamId2: json['teamId2'],
+
+
+      team1: json['team1'],
+      team2: json['team2'],
+      team1Players: List<String>.from(json['team1Players']),
+      team2Players: List<String>.from(json['team2Players']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'matchId': matchId,
+      'teamId1': teamId1,
+      'teamId2': teamId2,
+
+      // teamId2: json['teamId1'],
+
+
+      'team1': team1,
+      'team2': team2,
+      'team1Players': team1Players,
+      'team2Players': team2Players,
+    };
+  }
+}

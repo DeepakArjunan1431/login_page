@@ -39,8 +39,13 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
             final team1Name = match.matchInfo.team1?.teamName ?? 'Unknown';
             final team2Name = match.matchInfo.team2?.teamName ?? 'Unknown';
             final matchId = match.matchInfo.matchId;
+            final teamId1 = match.matchInfo.team1?.teamId ?? 0;
+            final teamId2 = match.matchInfo.team2?.teamId ?? 0;
+
             return matchdata(
               matchId: matchId,
+              teamId1: teamId1,
+              teamId2: teamId2,
               team1: team1Name,
               team2: team2Name,
             );
@@ -94,7 +99,7 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
                               '${matchDetail.team1} vs ${matchDetail.team2}',
                               style: TextStyle(fontSize: 16),
                             ),
-                            subtitle: Text('Match ID: ${matchDetail.matchId}'),
+                            subtitle: Text('Team ID: ${matchDetail.teamId1} vs ${matchDetail.teamId2}'),
                             trailing: ElevatedButton(
                               onPressed: () {
                                 Navigator.push(
@@ -104,6 +109,10 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
                                       team1Name: matchDetail.team1,
                                       team2Name: matchDetail.team2,
                                       matchId: matchDetail.matchId.toString(),
+                                       teamId1: matchDetail.teamId1,
+                                      teamId2: matchDetail.teamId2,
+                                     
+
                                     ),
                                   ),
                                 );

@@ -80,3 +80,20 @@ class ListElement {
         "countryName": countryName,
       };
 }
+
+class PlayerInfo {
+  final int teamId;
+  final String fullName;
+
+  PlayerInfo({
+    required this.teamId,
+    required this.fullName,
+  });
+
+  factory PlayerInfo.fromJson(Map<String, dynamic> json) {
+    return PlayerInfo(
+      teamId: json['teamId'],
+      fullName: json['fullName'],
+    );
+  }
+}

@@ -33,6 +33,9 @@ class MatchListPage extends StatelessWidget {
                           team1Name: data['team1'],
                           team2Name: data['team2'],
                           matchId: doc.id,
+                          teamId1: data['teamId1'], // Assuming these fields exist in your Firestore document
+                          teamId2: data['teamId2'], // Adjust field names as per your Firestore structure
+
                         ),
                       ),
                     );

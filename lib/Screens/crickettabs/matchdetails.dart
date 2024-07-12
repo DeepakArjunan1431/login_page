@@ -7,11 +7,15 @@ class MatchDetailsPage extends StatefulWidget {
   final String team1Name;
   final String team2Name;
   final String matchId;
+  final int teamId1;
+  final int teamId2;
 
   MatchDetailsPage({
     required this.team1Name,
     required this.team2Name,
     required this.matchId,
+     required this.teamId1,
+    required this.teamId2,
   });
 
   @override
@@ -28,6 +32,9 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   void initState() {
     super.initState();
     print('Initializing MatchDetailsPage state with matchId: ${widget.matchId}');
+    print('Initializing MatchDetailsPage state with matchId: ${widget.matchId}');
+  print('TeamId1: ${widget.teamId1}');
+  print('TeamId2: ${widget.teamId2}');
     _initializePools();
     _fetchMaxSlotsForPools();
   }
@@ -224,6 +231,10 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           poolName: poolName,
           joinedSlots: joinedSlots,
           totalSlots: totalSlots,
+          matchId: widget.matchId,   // Pass matchId to JoinPoolPage
+          teamId1: widget.teamId1,   // Pass teamId1 to JoinPoolPage
+          teamId2: widget.teamId2,   // Pass teamId2 to JoinPoolPage
+
         ),
       ),
     );
@@ -268,6 +279,16 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   @override
   Widget build(BuildContext context) {
     print('Building MatchDetailsPage with matchId: ${widget.matchId}');
+    
+    // Group pools by type
+    Map<String, List<Map<String, dynamic>>> groupedPools = {};
+    for (var pool in pools) {
+      if (!groupedPools.containsKey(pool['type'])) {
+        groupedPools[pool['type']] = [];
+      }
+      groupedPools[pool['type']]!.add(pool);
+    }
+
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70.0),
@@ -309,12 +330,21 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
       ),
       body: ListView.builder(
         padding: EdgeInsets.all(16.0),
-        itemCount: pools.length,
+        itemCount: groupedPools.length,
         itemBuilder: (context, index) {
-          String poolName = pools[index]['name'];
-          int joinedSlots = pools[index]['joinedSlots'];
-          int totalSlots = pools[index]['totalSlots'];
-          double progressValue = totalSlots != 0 ? joinedSlots / totalSlots : 0.0;
+          String poolType = groupedPools.keys.elementAt(index);
+          List<Map<String, dynamic>> poolsOfType = groupedPools[poolType]!;
+          int totalJoinedSlots = poolsOfType.fold<int>(0, (sum, pool) {
+            int slots = pool['joinedSlots'] is int ? pool['joinedSlots'] : int.parse(pool['joinedSlots'].toString());
+            return sum + slots;
+          });
+
+          int totalSlots = poolsOfType.fold<int>(0, (sum, pool) {
+            int slots = pool['totalSlots'] is int ? pool['totalSlots'] : int.parse(pool['totalSlots'].toString());
+            return sum + slots;
+          });
+
+          double progressValue = totalSlots != 0 ? totalJoinedSlots / totalSlots : 0.0;
 
           return Card(
             elevation: 4.0,
@@ -325,7 +355,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    poolName,
+                    poolType,
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontWeight: FontWeight.bold,
@@ -343,7 +373,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '$joinedSlots of $totalSlots slots joined',
+                        '$totalJoinedSlots of $totalSlots slots joined',
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: 14.0,
@@ -351,10 +381,10 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                       ),
                       ElevatedButton(
                         onPressed: () => _navigateToJoinPool(
-                          pools[index]['name'],
-                          pools[index]['joinedSlots'],
-                          pools[index]['totalSlots'],
-                          pools[index]['type'],
+                          poolsOfType[0]['name'],  // Use the first available pool of this type
+                          poolsOfType[0]['joinedSlots'],
+                          poolsOfType[0]['totalSlots'],
+                          poolType,
                         ),
                         child: Text(
                           'Join',
