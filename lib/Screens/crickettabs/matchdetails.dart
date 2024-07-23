@@ -252,6 +252,25 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
         return;
       }
 
+      // Organize selected players by team
+      Map<String, dynamic> teamSelection = {
+        'team1': {},
+        'team2': {}
+      };
+
+      for (var entry in result.entries) {
+        // Assuming the entry key contains the team ID or we need to determine the team from the data
+        String playerId = entry.key;
+        String playerName = entry.value;
+
+        // Add player to the corresponding team
+        if (playerId.startsWith('1')) {
+          teamSelection['team1'][playerId] = playerName;
+        } else if (playerId.startsWith('2')) {
+          teamSelection['team2'][playerId] = playerName;
+        }
+      }
+
       await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
         'matches': {
           widget.matchId: {
@@ -260,7 +279,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
               'userJoins': {
                 userId: {
                   'joinCount': FieldValue.increment(1),
-                  'selectedPlayers': result,
+                  'teams': FieldValue.arrayUnion([teamSelection]),
                 }
               }
             }
@@ -276,6 +295,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 }
+
   @override
   Widget build(BuildContext context) {
     print('Building MatchDetailsPage with matchId: ${widget.matchId}');
