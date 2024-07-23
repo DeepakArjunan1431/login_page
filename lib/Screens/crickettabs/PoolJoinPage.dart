@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:login_page/Models/ModelMatchInfo.dart';
-// import 'package:login_page/Models/teaminfomodel.dart';
+// import 'package:login_page/Models/ModelMatchInfo.dart';
 
 class JoinPoolPage extends StatefulWidget {
   final String poolName;
@@ -40,72 +39,98 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
       appBar: AppBar(
         title: Text('Join ${widget.poolName}'),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Match ID: ${widget.matchId}'),
-                  Text('Pool Name: ${widget.poolName}'),
-                  Text('Joined Slots: ${widget.joinedSlots}'),
-                  Text('Total Slots: ${widget.totalSlots}'),
-                  Text('Team ID 1: ${widget.teamId1}'),
-                  Text('Team ID 2: ${widget.teamId2}'),
-                  SizedBox(height: 20),
-                  Text('Team Information:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
+      body: ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Match ID: ${widget.matchId}'),
+                Text('Pool Name: ${widget.poolName}'),
+                Text('Joined Slots: ${widget.joinedSlots}'),
+                Text('Total Slots: ${widget.totalSlots}'),
+                Text('Team ID 1: ${widget.teamId1}'),
+                Text('Team ID 2: ${widget.teamId2}'),
+                SizedBox(height: 20),
+                Text('Team Information:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
             ),
-            FutureBuilder<List<TeamDetails>>(
-              future: futureTeamDetails,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return CircularProgressIndicator();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                  return Column(
-                    children: snapshot.data!.map((team) => buildTeamTile(team)).toList(),
-                  );
-                } else {
-                  return Text('No team information available for this match.');
-                }
-              },
-            ),
-            ElevatedButton(
+          ),
+          FutureBuilder<List<TeamDetails>>(
+            future: futureTeamDetails,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                return Column(
+                  children: snapshot.data!.map((team) => buildTeamTile(team)).toList(),
+                );
+              } else {
+                return Center(child: Text('No team information available for this match.'));
+              }
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
               onPressed: () {
                 // Implement join pool logic
                 Navigator.pop(context, true);
               },
               child: Text('Join Pool'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget buildTeamTile(TeamDetails team) {
-    return ExpansionTile(
-      title: Text('${team.name} (${team.shortName})'),
-      subtitle: Text('Team ID: ${team.teamId}'),
-      children: team.playerDetails.map((player) =>
-        ListTile(
-          title: Text(player.fullName),
-          subtitle: Text(player.nickName),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (player.captain) Icon(Icons.star, size: 20),
-              if (player.keeper) Icon(Icons.sports_cricket, size: 20),
-              if (player.substitute) Icon(Icons.swap_horiz, size: 20),
-            ],
-          ),
-        )
-      ).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text('${team.name} (${team.shortName})', 
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        GridView.count(
+          crossAxisCount: 2,
+          childAspectRatio: 1.5,
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          children: team.playerDetails.map((player) => buildPlayerCard(player)).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget buildPlayerCard(PlayerDetails player) {
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.all(8),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(player.fullName, style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(player.nickName),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (player.captain) Icon(Icons.star, size: 20),
+                if (player.keeper) Icon(Icons.sports_cricket, size: 20),
+                if (player.substitute) Icon(Icons.swap_horiz, size: 20),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -130,42 +155,15 @@ Future<List<TeamDetails>> fetchPlayerInfo(String matchId) async {
     if (response.statusCode == 200) {
       print('API call successful');
       final jsonData = json.decode(response.body);
-      print('Raw JSON data: ${jsonData.toString()}'); // Print entire JSON data
+      print('Raw JSON data: ${jsonData.toString()}');
 
-      // Extract matchInfo
       final matchInfo = jsonData['matchInfo'];
       if (matchInfo == null) {
         throw Exception('No matchInfo found in JSON response');
       }
-     final team1Players = matchInfo['team1']['playerDetails'] as List<dynamic>?;
-
-if (team1Players != null) {
-  final team1PlayerNames = team1Players.map((player) => player['fullName'] as String).toList();
-  if (team1PlayerNames.isNotEmpty) {
-    print('Team 1 players:');
-    team1PlayerNames.forEach((playerName) => print(playerName));
-  } else {
-    print('No players found for Team 1');
-  }
-} else {
-  print('No players found for Team 12');
-}
-
-
-// Similar logic for team2
-final team2Players = matchInfo['team2']['playerDetails'] as List<dynamic>?;
-
-if (team2Players != null && team2Players.isNotEmpty) {
-  final team2PlayerNames = team2Players.map((player) => player['fullName'] as String).toList();
-  print('Team 2 players:');
-  team2PlayerNames.forEach((playerName) => print(playerName));
-} else {
-  print('No players found for Team 2');
-}
 
       List<TeamDetails> teams = [];
 
-      // Extract team details
       for (var teamData in [matchInfo['team1'], matchInfo['team2']]) {
         List<PlayerDetails> playerDetails = (teamData['playerDetails'] as List).map((player) =>
           PlayerDetails(
@@ -194,7 +192,7 @@ if (team2Players != null && team2Players.isNotEmpty) {
       return teams;
     } else if (response.statusCode == 204) {
       print('No content available for this match ID');
-      return []; // Return an empty list instead of throwing an exception
+      return [];
     } else {
       print('API call failed with status code: ${response.statusCode}');
       print('Response body: ${response.body}');
@@ -204,4 +202,40 @@ if (team2Players != null && team2Players.isNotEmpty) {
     print('Exception occurred: $e');
     throw Exception('Failed to load team info: $e');
   }
+}
+
+// Make sure you have these classes defined in your ModelMatchInfo.dart file:
+
+class TeamDetails {
+  final int id;
+  final int teamId;
+  final String name;
+  final String shortName;
+  final List<PlayerDetails> playerDetails;
+
+  TeamDetails({
+    required this.id,
+    required this.teamId,
+    required this.name,
+    required this.shortName,
+    required this.playerDetails,
+  });
+}
+
+class PlayerDetails {
+  final int id;
+  final String fullName;
+  final String nickName;
+  final bool captain;
+  final bool keeper;
+  final bool substitute;
+
+  PlayerDetails({
+    required this.id,
+    required this.fullName,
+    required this.nickName,
+    required this.captain,
+    required this.keeper,
+    required this.substitute,
+  });
 }
