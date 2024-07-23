@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-// import 'package:login_page/Models/ModelMatchInfo.dart';
 
 class JoinPoolPage extends StatefulWidget {
   final String poolName;
@@ -26,6 +25,9 @@ class JoinPoolPage extends StatefulWidget {
 
 class _JoinPoolPageState extends State<JoinPoolPage> {
   late Future<List<TeamDetails>> futureTeamDetails;
+  List<TeamDetails> _teamDetails = [];
+  Set<int> selectedPlayerIds = {};
+  static const int MAX_PLAYERS = 15;
 
   @override
   void initState() {
@@ -46,6 +48,9 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('Selected Players: ${selectedPlayerIds.length}/$MAX_PLAYERS',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
                 Text('Match ID: ${widget.matchId}'),
                 Text('Pool Name: ${widget.poolName}'),
                 Text('Joined Slots: ${widget.joinedSlots}'),
@@ -65,6 +70,7 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
               } else if (snapshot.hasError) {
                 return Center(child: Text('Error: ${snapshot.error}'));
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                _teamDetails = snapshot.data!;
                 return Column(
                   children: snapshot.data!.map((team) => buildTeamTile(team)).toList(),
                 );
@@ -77,8 +83,15 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: () {
-                // Implement join pool logic
-                Navigator.pop(context, true);
+                printSelectedPlayers();
+                Map<String, String> selectedPlayers = {};
+                for (var playerId in selectedPlayerIds) {
+                  var player = _teamDetails
+                      .expand((team) => team.playerDetails)
+                      .firstWhere((player) => player.id == playerId);
+                  selectedPlayers[playerId.toString()] = player.fullName;
+                }
+                Navigator.pop(context, selectedPlayers);
               },
               child: Text('Join Pool'),
             ),
@@ -109,29 +122,79 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
   }
 
   Widget buildPlayerCard(PlayerDetails player) {
+    bool isSelected = selectedPlayerIds.contains(player.id);
+
     return Card(
       elevation: 2,
       margin: EdgeInsets.all(8),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(player.fullName, style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(player.nickName),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (player.captain) Icon(Icons.star, size: 20),
-                if (player.keeper) Icon(Icons.sports_cricket, size: 20),
-                if (player.substitute) Icon(Icons.swap_horiz, size: 20),
-              ],
-            ),
-          ],
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            if (isSelected) {
+              selectedPlayerIds.remove(player.id);
+            } else if (selectedPlayerIds.length < MAX_PLAYERS) {
+              selectedPlayerIds.add(player.id);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('You can only select up to 15 players.')),
+              );
+            }
+          });
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(player.fullName, style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (bool? value) {
+                      setState(() {
+                        if (value == true && selectedPlayerIds.length < MAX_PLAYERS) {
+                          selectedPlayerIds.add(player.id);
+                        } else if (value == false) {
+                          selectedPlayerIds.remove(player.id);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('You can only select up to 15 players.')),
+                          );
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              Text(player.nickName),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (player.captain) Icon(Icons.star, size: 20),
+                  if (player.keeper) Icon(Icons.sports_cricket, size: 20),
+                  if (player.substitute) Icon(Icons.swap_horiz, size: 20),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  void printSelectedPlayers() async {
+    List<PlayerDetails> allPlayers = _teamDetails.expand((team) => team.playerDetails).toList();
+    List<PlayerDetails> selectedPlayers = allPlayers.where((player) => selectedPlayerIds.contains(player.id)).toList();
+
+    print('Selected Players:');
+    for (var player in selectedPlayers) {
+      print('${player.fullName} (${player.nickName})');
+    }
   }
 }
 
@@ -203,8 +266,6 @@ Future<List<TeamDetails>> fetchPlayerInfo(String matchId) async {
     throw Exception('Failed to load team info: $e');
   }
 }
-
-// Make sure you have these classes defined in your ModelMatchInfo.dart file:
 
 class TeamDetails {
   final int id;

@@ -14,7 +14,7 @@ class MatchDetailsPage extends StatefulWidget {
     required this.team1Name,
     required this.team2Name,
     required this.matchId,
-     required this.teamId1,
+    required this.teamId1,
     required this.teamId2,
   });
 
@@ -32,9 +32,8 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   void initState() {
     super.initState();
     print('Initializing MatchDetailsPage state with matchId: ${widget.matchId}');
-    print('Initializing MatchDetailsPage state with matchId: ${widget.matchId}');
-  print('TeamId1: ${widget.teamId1}');
-  print('TeamId2: ${widget.teamId2}');
+    print('TeamId1: ${widget.teamId1}');
+    print('TeamId2: ${widget.teamId2}');
     _initializePools();
     _fetchMaxSlotsForPools();
   }
@@ -223,59 +222,60 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
-  void _navigateToJoinPool(String poolName, int joinedSlots, int totalSlots, String poolType) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => JoinPoolPage(
-          poolName: poolName,
-          joinedSlots: joinedSlots,
-          totalSlots: totalSlots,
-          matchId: widget.matchId,   // Pass matchId to JoinPoolPage
-          teamId1: widget.teamId1,   // Pass teamId1 to JoinPoolPage
-          teamId2: widget.teamId2,   // Pass teamId2 to JoinPoolPage
-
-        ),
+ void _navigateToJoinPool(String poolName, int joinedSlots, int totalSlots, String poolType) async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => JoinPoolPage(
+        poolName: poolName,
+        joinedSlots: joinedSlots,
+        totalSlots: totalSlots,
+        matchId: widget.matchId,
+        teamId1: widget.teamId1,
+        teamId2: widget.teamId2,
       ),
-    );
+    ),
+  );
 
-    if (result == true) {
-      try {
-        String userId = await getCurrentUserId();
-        String poolDoc = _getPoolDocName(poolType);
+  if (result != null && result is Map<String, String>) {
+    try {
+      String userId = await getCurrentUserId();
+      String poolDoc = _getPoolDocName(poolType);
 
-        if (joinedSlots >= totalSlots) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('This pool has reached its maximum capacity.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
+      if (joinedSlots >= totalSlots) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('This pool has reached its maximum capacity.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-        await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
-          'matches': {
-            widget.matchId: {
-              poolName: {
-                'slots': FieldValue.increment(1),
-                'userJoins': {
-                  userId: FieldValue.increment(1)
+      await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
+        'matches': {
+          widget.matchId: {
+            poolName: {
+              'slots': FieldValue.increment(1),
+              'userJoins': {
+                userId: {
+                  'joinCount': FieldValue.increment(1),
+                  'selectedPlayers': result,
                 }
               }
             }
           }
-        }, SetOptions(merge: true));
+        }
+      }, SetOptions(merge: true));
 
-        // Refresh the pools data, which will hide full pools and create new ones if needed
-        await _fetchMaxSlotsForPools();
+      // Refresh the pools data
+      await _fetchMaxSlotsForPools();
 
-      } catch (e) {
-        print('Error updating Firebase: $e');
-      }
+    } catch (e) {
+      print('Error updating Firebase: $e');
     }
   }
-
+}
   @override
   Widget build(BuildContext context) {
     print('Building MatchDetailsPage with matchId: ${widget.matchId}');
@@ -381,7 +381,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                       ),
                       ElevatedButton(
                         onPressed: () => _navigateToJoinPool(
-                          poolsOfType[0]['name'],  // Use the first available pool of this type
+                          poolsOfType[0]['name'],
                           poolsOfType[0]['joinedSlots'],
                           poolsOfType[0]['totalSlots'],
                           poolType,
