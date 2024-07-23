@@ -233,25 +233,25 @@ class MatchInfo {
   });
 
   factory MatchInfo.fromJson(Map<String, dynamic> json) => MatchInfo(
-        matchId: json["matchId"],
-        seriesId: json["seriesId"],
-        seriesName: json["seriesName"],
-        matchDesc: json["matchDesc"],
-        matchFormat: matchFormatValues.map[json["matchFormat"]]!,
-        startDate: json["startDate"],
-        endDate: json["endDate"],
-        state: json["state"],
-        status: json["status"],
-        team1: Team.fromJson(json["team1"]),
-        team2: Team.fromJson(json["team2"]),
-        venueInfo: VenueInfo.fromJson(json["venueInfo"]),
-        currBatTeamId: json["currBatTeamId"],
-        seriesStartDt: json["seriesStartDt"],
-        seriesEndDt: json["seriesEndDt"],
-        isTimeAnnounced: json["isTimeAnnounced"] ?? false,
-        stateTitle: json["stateTitle"],
-        isFantasyEnabled: json["isFantasyEnabled"],
-      );
+        matchId: json["matchId"] ?? 0,
+    seriesId: json["seriesId"] ?? 0,
+    seriesName: json["seriesName"] ?? "",
+    matchDesc: json["matchDesc"] ?? "",
+    matchFormat: matchFormatValues.map[json["matchFormat"]] ?? MatchFormat.ODI,
+    startDate: json["startDate"] ?? "",
+    endDate: json["endDate"] ?? "",
+    state: json["state"] ?? "",
+    status: json["status"] ?? "",
+    team1: Team.fromJson(json["team1"] ?? {}),
+    team2: Team.fromJson(json["team2"] ?? {}),
+    venueInfo: VenueInfo.fromJson(json["venueInfo"] ?? {}),
+    currBatTeamId: json["currBatTeamId"],
+    seriesStartDt: json["seriesStartDt"] ?? "",
+    seriesEndDt: json["seriesEndDt"] ?? "",
+    isTimeAnnounced: json["isTimeAnnounced"] ?? false,
+    stateTitle: json["stateTitle"] ?? "",
+    isFantasyEnabled: json["isFantasyEnabled"],
+  );
 
   Map<String, dynamic> toJson() => {
         "matchId": matchId,
@@ -294,11 +294,11 @@ class Team {
   });
 
   factory Team.fromJson(Map<String, dynamic> json) => Team(
-        teamId: json["teamId"],
-        teamName: json["teamName"],
-        teamSName: json["teamSName"],
-        imageId: json["imageId"],
-      );
+       teamId: json["teamId"] ?? 0,
+    teamName: json["teamName"] ?? "",
+    teamSName: json["teamSName"] ?? "",
+    imageId: json["imageId"] ?? 0,
+  );
 
   Map<String, dynamic> toJson() => {
         "teamId": teamId,

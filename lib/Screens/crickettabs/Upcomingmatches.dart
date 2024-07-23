@@ -30,6 +30,8 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
     final response = await http.get(Uri.parse(widget.apiUrl), headers: headers);
 
     if (response.statusCode == 200) {
+      print('$response');
+      // print('body': ${response}.bo')
       final parsedData = welcomeFromJson(response.body);
 
       final matchDetails = parsedData.typeMatches
@@ -38,11 +40,22 @@ class _UpcomingmatchesState extends State<Upcomingmatches> {
           .where((match) => match.matchInfo.state.toLowerCase() != "upcoming")
           .map((match) {
             final team1Name = match.matchInfo.team1?.teamName ?? 'Unknown';
+            print('team1:$team1Name');
             final team2Name = match.matchInfo.team2?.teamName ?? 'Unknown';
+            print('team1:$team2Name');
+
             final matchId = match.matchInfo.matchId;
+            print('team1:$matchId');
+
             final teamId1 = match.matchInfo.team1?.teamId ?? 0;
+            print('team1:$teamId1');
+
             final teamId2 = match.matchInfo.team2?.teamId ?? 0;
+            print('team1:$teamId2');
+
             final state = match.matchInfo.state;
+            print('team1:$state');
+
 
             return matchdata(
               matchId: matchId,
