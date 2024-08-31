@@ -27,12 +27,15 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
   late Future<List<TeamDetails>> futureTeamDetails;
   List<TeamDetails> _teamDetails = [];
   Set<int> selectedPlayerIds = {};
-  static const int MAX_PLAYERS = 15;
+  static const int MAX_PLAYERS = 12;
+  Map<int, int> teamPlayerCount = {};
+  static const int MAX_PLAYERS_PER_TEAM = 6;
 
   @override
   void initState() {
     super.initState();
     futureTeamDetails = fetchPlayerInfo(widget.matchId);
+    teamPlayerCount = {widget.teamId1: 0, widget.teamId2: 0};
   }
 
   @override
@@ -84,7 +87,11 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
             child: ElevatedButton(
               onPressed: () {
                 printSelectedPlayers();
-                Map<String, String> selectedPlayers = {};
+                Map<String, String> selectedPlayers = {
+                  'poolName': widget.poolName,
+                  'joinedSlots': widget.joinedSlots.toString(),
+                  'totalSlots': widget.totalSlots.toString(),
+                };
                 for (var playerId in selectedPlayerIds) {
                   var player = _teamDetails
                       .expand((team) => team.playerDetails)
@@ -123,6 +130,7 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
 
   Widget buildPlayerCard(PlayerDetails player) {
     bool isSelected = selectedPlayerIds.contains(player.id);
+    int teamId = _teamDetails.firstWhere((team) => team.playerDetails.contains(player)).id;
 
     return Card(
       elevation: 2,
@@ -132,11 +140,18 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
           setState(() {
             if (isSelected) {
               selectedPlayerIds.remove(player.id);
-            } else if (selectedPlayerIds.length < MAX_PLAYERS) {
+              teamPlayerCount[teamId] = (teamPlayerCount[teamId] ?? 0) - 1;
+            } else if (selectedPlayerIds.length < MAX_PLAYERS && 
+                       (teamPlayerCount[teamId] ?? 0) < MAX_PLAYERS_PER_TEAM) {
               selectedPlayerIds.add(player.id);
+              teamPlayerCount[teamId] = (teamPlayerCount[teamId] ?? 0) + 1;
+            } else if ((teamPlayerCount[teamId] ?? 0) >= MAX_PLAYERS_PER_TEAM) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('You can only select up to 6 players from each team.')),
+              );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('You can only select up to 15 players.')),
+                SnackBar(content: Text('You can only select up to 12 players in total.')),
               );
             }
           });
@@ -157,13 +172,20 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
                     value: isSelected,
                     onChanged: (bool? value) {
                       setState(() {
-                        if (value == true && selectedPlayerIds.length < MAX_PLAYERS) {
+                        if (value == true && selectedPlayerIds.length < MAX_PLAYERS && 
+                            (teamPlayerCount[teamId] ?? 0) < MAX_PLAYERS_PER_TEAM) {
                           selectedPlayerIds.add(player.id);
+                          teamPlayerCount[teamId] = (teamPlayerCount[teamId] ?? 0) + 1;
                         } else if (value == false) {
                           selectedPlayerIds.remove(player.id);
+                          teamPlayerCount[teamId] = (teamPlayerCount[teamId] ?? 0) - 1;
+                        } else if ((teamPlayerCount[teamId] ?? 0) >= MAX_PLAYERS_PER_TEAM) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('You can only select up to 6 players from each team.')),
+                          );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('You can only select up to 15 players.')),
+                            SnackBar(content: Text('You can only select up to 12 players in total.')),
                           );
                         }
                       });
@@ -187,7 +209,7 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
     );
   }
 
-  void printSelectedPlayers() async {
+  void printSelectedPlayers() {
     List<PlayerDetails> allPlayers = _teamDetails.expand((team) => team.playerDetails).toList();
     List<PlayerDetails> selectedPlayers = allPlayers.where((player) => selectedPlayerIds.contains(player.id)).toList();
 

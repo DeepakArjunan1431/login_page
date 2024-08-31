@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:login_page/Screens/crickettabs/PoolJoinPage.dart';
+// import 'package:login_page/Screens/crickettabs/PoolSelectionPage.dart';
+import 'package:login_page/Screens/crickettabs/fetchplayers.dart';
 
 class MatchDetailsPage extends StatefulWidget {
   final String team1Name;
@@ -222,14 +224,26 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
- void _navigateToJoinPool(String poolName, int joinedSlots, int totalSlots, String poolType) async {
+  void _navigateToPoolSelection(String poolType) async {
+  List<Map<String, dynamic>> poolsOfType = pools.where((pool) => pool['type'] == poolType).toList();
+  
+  // Select the first available pool or create a new one if needed
+  Map<String, dynamic> selectedPool = poolsOfType.firstWhere(
+    (pool) => pool['joinedSlots'] < pool['totalSlots'],
+    orElse: () => {
+      'name': '$poolType ${poolsOfType.length + 1}',
+      'joinedSlots': 0,
+      'totalSlots': _getMaxSizeForPoolType(poolType),
+    },
+  );
+
   final result = await Navigator.push(
     context,
     MaterialPageRoute(
       builder: (context) => JoinPoolPage(
-        poolName: poolName,
-        joinedSlots: joinedSlots,
-        totalSlots: totalSlots,
+        poolName: selectedPool['name'],
+        joinedSlots: selectedPool['joinedSlots'],
+        totalSlots: selectedPool['totalSlots'],
         matchId: widget.matchId,
         teamId1: widget.teamId1,
         teamId2: widget.teamId2,
@@ -238,60 +252,90 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   );
 
   if (result != null && result is Map<String, String>) {
-    try {
-      String userId = await getCurrentUserId();
-      String poolDoc = _getPoolDocName(poolType);
+    // Navigate to PoolSelectionPage (fetchplayers.dart)
+    final finalResult = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PoolSelectionPage(
+          matchId: widget.matchId,
+          teamId1: widget.teamId1,
+          teamId2: widget.teamId2,
+          pools: poolsOfType,
+          preSelectedPlayers: result,
+        ),
+      ),
+    );
 
-      if (joinedSlots >= totalSlots) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('This pool has reached its maximum capacity.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+    if (finalResult != null && finalResult is Map<String, String>) {
+      try {
+        String userId = await getCurrentUserId();
+        String poolDoc = _getPoolDocName(poolType);
+        String poolName = finalResult['poolName'] ?? '';
+        int joinedSlots = int.parse(finalResult['joinedSlots'] ?? '0');
+        int totalSlots = int.parse(finalResult['totalSlots'] ?? '0');
 
-      // Organize selected players by team
-      Map<String, dynamic> teamSelection = {
-        'team1': {},
-        'team2': {}
-      };
-
-      for (var entry in result.entries) {
-        // Assuming the entry key contains the team ID or we need to determine the team from the data
-        String playerId = entry.key;
-        String playerName = entry.value;
-
-        // Add player to the corresponding team
-        if (playerId.startsWith('1')) {
-          teamSelection['team1'][playerId] = playerName;
-        } else if (playerId.startsWith('2')) {
-          teamSelection['team2'][playerId] = playerName;
+        if (joinedSlots >= totalSlots) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('This pool has reached its maximum capacity.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
         }
-      }
 
-      await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
-        'matches': {
-          widget.matchId: {
-            poolName: {
-              'slots': FieldValue.increment(1),
-              'userJoins': {
-                userId: {
-                  'joinCount': FieldValue.increment(1),
-                  'teams': FieldValue.arrayUnion([teamSelection]),
+        Map<String, dynamic> teamSelection = {
+          'team1': {},
+          'team2': {}
+        };
+
+        for (var entry in finalResult.entries) {
+          if (entry.key != 'poolName' && entry.key != 'joinedSlots' && entry.key != 'totalSlots') {
+            String playerId = entry.key;
+            String playerName = entry.value;
+
+            if (playerId.startsWith('1')) {
+              teamSelection['team1'][playerId] = playerName;
+            } else if (playerId.startsWith('2')) {
+              teamSelection['team2'][playerId] = playerName;
+            }
+          }
+        }
+
+        await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
+          'matches': {
+            widget.matchId: {
+              poolName: {
+                'slots': FieldValue.increment(1),
+                'userJoins': {
+                  userId: {
+                    'joinCount': FieldValue.increment(1),
+                    'teams': FieldValue.arrayUnion([teamSelection]),
+                  }
                 }
               }
             }
           }
-        }
-      }, SetOptions(merge: true));
+        }, SetOptions(merge: true));
 
-      // Refresh the pools data
-      await _fetchMaxSlotsForPools();
+        await _fetchMaxSlotsForPools();
 
-    } catch (e) {
-      print('Error updating Firebase: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully joined the pool!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+      } catch (e) {
+        print('Error updating Firebase: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error joining the pool. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
@@ -300,7 +344,6 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   Widget build(BuildContext context) {
     print('Building MatchDetailsPage with matchId: ${widget.matchId}');
     
-    // Group pools by type
     Map<String, List<Map<String, dynamic>>> groupedPools = {};
     for (var pool in pools) {
       if (!groupedPools.containsKey(pool['type'])) {
@@ -400,12 +443,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
                         ),
                       ),
                       ElevatedButton(
-                        onPressed: () => _navigateToJoinPool(
-                          poolsOfType[0]['name'],
-                          poolsOfType[0]['joinedSlots'],
-                          poolsOfType[0]['totalSlots'],
-                          poolType,
-                        ),
+                        onPressed: () => _navigateToPoolSelection(poolType),
                         child: Text(
                           'Join',
                           style: TextStyle(
