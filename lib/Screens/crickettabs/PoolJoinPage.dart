@@ -86,20 +86,21 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
               onPressed: () {
-                printSelectedPlayers();
-                Map<String, String> selectedPlayers = {
-                  'poolName': widget.poolName,
-                  'joinedSlots': widget.joinedSlots.toString(),
-                  'totalSlots': widget.totalSlots.toString(),
-                };
-                for (var playerId in selectedPlayerIds) {
-                  var player = _teamDetails
-                      .expand((team) => team.playerDetails)
-                      .firstWhere((player) => player.id == playerId);
-                  selectedPlayers[playerId.toString()] = player.fullName;
-                }
-                Navigator.pop(context, selectedPlayers);
-              },
+  printSelectedPlayers();
+  Map<String, String> selectedPlayers = {
+    'poolName': widget.poolName,
+    'joinedSlots': widget.joinedSlots.toString(),
+    'totalSlots': widget.totalSlots.toString(),
+  };
+  for (var playerId in selectedPlayerIds) {
+    var player = _teamDetails
+        .expand((team) => team.playerDetails)
+        .firstWhere((player) => player.id == playerId);
+    selectedPlayers[playerId.toString()] = '${player.fullName} - ${player.role}'; // Include role
+  }
+  Navigator.pop(context, selectedPlayers);
+},
+
               child: Text('Join Pool'),
             ),
           ),
@@ -194,6 +195,7 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
                 ],
               ),
               Text(player.nickName),
+              // Text(player.role, style: TextStyle(fontStyle: FontStyle.italic)), // Display player role
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -215,7 +217,7 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
 
     print('Selected Players:');
     for (var player in selectedPlayers) {
-      print('${player.fullName} (${player.nickName})');
+      print('${player.fullName} (${player.nickName}) - ${player.role}');
     }
   }
 }
@@ -258,6 +260,7 @@ Future<List<TeamDetails>> fetchPlayerInfo(String matchId) async {
             captain: player['captain'] ?? false,
             keeper: player['keeper'] ?? false,
             substitute: player['substitute'] ?? false,
+            role: player['role'] ?? 'Unknown', // Add role information
           )
         ).toList();
 
@@ -312,6 +315,7 @@ class PlayerDetails {
   final bool captain;
   final bool keeper;
   final bool substitute;
+  final String role; // Add role field
 
   PlayerDetails({
     required this.id,
@@ -320,5 +324,6 @@ class PlayerDetails {
     required this.captain,
     required this.keeper,
     required this.substitute,
+    required this.role, // Include role in the constructor
   });
 }

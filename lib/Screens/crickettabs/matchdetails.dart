@@ -251,8 +251,8 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     ),
   );
 
-  if (result != null && result is Map<String, String>) {
-    // Navigate to PoolSelectionPage (fetchplayers.dart)
+  if (result != null && result is Map<String, dynamic>) {
+    // Navigate to PoolSelectionPage
     final finalResult = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -266,7 +266,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
       ),
     );
 
-    if (finalResult != null && finalResult is Map<String, String>) {
+    if (finalResult != null && finalResult is Map<String, dynamic>) {
       try {
         String userId = await getCurrentUserId();
         String poolDoc = _getPoolDocName(poolType);
@@ -284,23 +284,29 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           return;
         }
 
+        // Prepare teamSelection with detailed player info
         Map<String, dynamic> teamSelection = {
-          'team1': {},
-          'team2': {}
+          'team1': [],
+          'team2': []
         };
 
-        for (var entry in finalResult.entries) {
-          if (entry.key != 'poolName' && entry.key != 'joinedSlots' && entry.key != 'totalSlots') {
-            String playerId = entry.key;
-            String playerName = entry.value;
-
-            if (playerId.startsWith('1')) {
-              teamSelection['team1'][playerId] = playerName;
-            } else if (playerId.startsWith('2')) {
-              teamSelection['team2'][playerId] = playerName;
-            }
+        finalResult['players'].forEach((playerId, playerData) {
+          if (playerId.startsWith('1')) {
+            teamSelection['team1'].add({
+              'PlayerId': playerId,
+              'PlayerName': playerData['PlayerName'],
+              'PredictedRuns': playerData['PredictedRuns'],
+              'PredictedWickets': playerData['PredictedWickets'],
+            });
+          } else if (playerId.startsWith('2')) {
+            teamSelection['team2'].add({
+              'PlayerId': playerId,
+              'PlayerName': playerData['PlayerName'],
+              'PredictedRuns': playerData['PredictedRuns'],
+              'PredictedWickets': playerData['PredictedWickets'],
+            });
           }
-        }
+        });
 
         await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
           'matches': {

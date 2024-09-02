@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:login_page/Screens/Home_Screen.dart';
 import 'package:login_page/Screens/Sign_in.dart';
+import 'package:login_page/Screens/myTeam.dart';
 import 'package:login_page/utils/Colours.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -255,20 +256,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Center(
                   child: Container(
                     width: 150,
-                    child: ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.brown[900],
-                      ),
-                      child: Text(
-                        "Follow",
-                        style: TextStyle(
-                          fontSize: 16,
-                          letterSpacing: 2.2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
+                    child: // In some other page or widget
+ElevatedButton(
+  child: Text('View My Team'),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyTeamPage(
+          matchId: 'your_match_id', // Pass actual match ID
+          teamId1: 1, // Pass actual team ID
+          teamId2: 2, // Pass actual team ID
+        ),
+      ),
+    );
+  },
+)
+
                   ),
                 ),
                 SizedBox(height: 30),
