@@ -290,12 +290,13 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
         };
 
         finalResult['players'].forEach((playerId, playerData) {
-          teamSelection['players'].add({
-            'PlayerId': playerId,
-            'PlayerName': playerData['PlayerName'],
-            'PredictedRuns': playerData['PredictedRuns'],
-            'PredictedWickets': playerData['PredictedWickets'],
-          });
+  teamSelection['players'].add({
+    'PlayerId': playerId,
+    'PlayerName': playerData['PlayerName'],
+    'PredictedRuns': playerData['PredictedRuns'],
+    'PredictedWickets': playerData['PredictedWickets'],
+    'TeamName': playerData['TeamName'], // Add the team name here
+  });
         });
 
         await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({

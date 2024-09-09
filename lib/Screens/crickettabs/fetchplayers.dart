@@ -53,7 +53,9 @@
           // Display preselected players with dropdowns
           ...widget.preSelectedPlayers.entries.map((entry) {
             if (entry.key != 'poolName' && entry.key != 'joinedSlots' && entry.key != 'totalSlots') {
-              String role = entry.value.split(' - ')[1]; // Extract role
+              String roleAndTeam = entry.value.split(' - ')[1]; // This now contains both role and team name
+    String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
+    String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract just the team name
 
               return Container(
                 margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -81,9 +83,9 @@
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Player ID: ${entry.key}, Role: $role',
-                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                          ),
+                  'Player ID: ${entry.key}, Role: $role, Team: $teamName', // Display role and team name
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
                         ],
                       ),
                     ),
@@ -140,10 +142,16 @@
       Map<String, dynamic> detailedPlayers = {};
       widget.preSelectedPlayers.forEach((key, value) {
         if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
+          String playerName = value.split(' - ')[0];  // Extract the player's name
+          String roleAndTeam = value.split(' - ')[1]; // Contains both role and team name
+          String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
+          String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract the team name
+          
           detailedPlayers[key] = {
-            'PlayerName': value.split(' - ')[0],
+            'PlayerName': playerName,
             'PredictedRuns': predictedRuns[key] ?? 0,
             'PredictedWickets': predictedWickets[key] ?? 0,
+            'TeamName': teamName,  // Add the team name to the map
           };
         }
       });
@@ -156,6 +164,7 @@
     },
   ),
 )
+
 
         ],
       ),

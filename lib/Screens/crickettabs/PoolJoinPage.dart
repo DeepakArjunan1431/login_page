@@ -96,8 +96,10 @@ class _JoinPoolPageState extends State<JoinPoolPage> {
     var player = _teamDetails
         .expand((team) => team.playerDetails)
         .firstWhere((player) => player.id == playerId);
-    selectedPlayers[playerId.toString()] = '${player.fullName} - ${player.role}'; // Include role
-  }
+   var team = _teamDetails.firstWhere((team) => team.playerDetails.contains(player));
+
+  selectedPlayers[playerId.toString()] = '${player.fullName} - ${player.role} (${team.name})'; // Include role and team name
+}
   Navigator.pop(context, selectedPlayers);
 },
 
