@@ -5,6 +5,9 @@ import 'package:login_page/Screens/Home_Screen.dart';
 import 'package:login_page/Screens/Sign_in.dart';
 import 'package:login_page/Screens/myTeam.dart';
 import 'package:login_page/utils/Colours.dart';
+// import 'path_to_myteam_page_file.dart'; // Adjust the path as necessary
+
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -261,17 +264,13 @@ ElevatedButton(
   child: Text('View My Team'),
   onPressed: () {
     Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MyTeamPage(
-          matchId: 'your_match_id', // Pass actual match ID
-          teamId1: 1, // Pass actual team ID
-          teamId2: 2, // Pass actual team ID
-        ),
-      ),
-    );
+  context,
+  MaterialPageRoute(builder: (context) => UserPoolsPage()),
+);
   },
 )
+
+
 
                   ),
                 ),

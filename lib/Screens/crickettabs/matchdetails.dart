@@ -224,7 +224,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
-  void _navigateToPoolSelection(String poolType) async {
+ void _navigateToPoolSelection(String poolType) async {
   List<Map<String, dynamic>> poolsOfType = pools.where((pool) => pool['type'] == poolType).toList();
   
   // Select the first available pool or create a new one if needed
@@ -286,26 +286,16 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
 
         // Prepare teamSelection with detailed player info
         Map<String, dynamic> teamSelection = {
-          'team1': [],
-          'team2': []
+          'players': []
         };
 
         finalResult['players'].forEach((playerId, playerData) {
-          if (playerId.startsWith('1')) {
-            teamSelection['team1'].add({
-              'PlayerId': playerId,
-              'PlayerName': playerData['PlayerName'],
-              'PredictedRuns': playerData['PredictedRuns'],
-              'PredictedWickets': playerData['PredictedWickets'],
-            });
-          } else if (playerId.startsWith('2')) {
-            teamSelection['team2'].add({
-              'PlayerId': playerId,
-              'PlayerName': playerData['PlayerName'],
-              'PredictedRuns': playerData['PredictedRuns'],
-              'PredictedWickets': playerData['PredictedWickets'],
-            });
-          }
+          teamSelection['players'].add({
+            'PlayerId': playerId,
+            'PlayerName': playerData['PlayerName'],
+            'PredictedRuns': playerData['PredictedRuns'],
+            'PredictedWickets': playerData['PredictedWickets'],
+          });
         });
 
         await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
