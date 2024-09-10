@@ -226,7 +226,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
 
  void _navigateToPoolSelection(String poolType) async {
   List<Map<String, dynamic>> poolsOfType = pools.where((pool) => pool['type'] == poolType).toList();
-  
+
   // Select the first available pool or create a new one if needed
   Map<String, dynamic> selectedPool = poolsOfType.firstWhere(
     (pool) => pool['joinedSlots'] < pool['totalSlots'],
@@ -284,20 +284,26 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           return;
         }
 
-        // Prepare teamSelection with detailed player info
-        Map<String, dynamic> teamSelection = {
-          'players': []
-        };
+        // Prepare teamSelection with detailed player info and sort by priority in descending order
+        List<Map<String, dynamic>> sortedPlayers = [];
 
         finalResult['players'].forEach((playerId, playerData) {
-  teamSelection['players'].add({
-    'PlayerId': playerId,
-    'PlayerName': playerData['PlayerName'],
-    'PredictedRuns': playerData['PredictedRuns'],
-    'PredictedWickets': playerData['PredictedWickets'],
-    'TeamName': playerData['TeamName'], // Add the team name here
-  });
+          sortedPlayers.add({
+            'PlayerId': playerId,
+            'PlayerName': playerData['PlayerName'],
+            'PredictedRuns': playerData['PredictedRuns'],
+            'PredictedWickets': playerData['PredictedWickets'],
+            'TeamName': playerData['TeamName'],
+            'Priority': playerData['Priority'],
+          });
         });
+
+        // Sort the players based on the 'Priority' value in descending order (12 to 1)
+        sortedPlayers.sort((a, b) => b['Priority'].compareTo(a['Priority']));
+
+        Map<String, dynamic> teamSelection = {
+          'players': sortedPlayers
+        };
 
         await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
           'matches': {
@@ -336,6 +342,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 }
+
 
   @override
   Widget build(BuildContext context) {

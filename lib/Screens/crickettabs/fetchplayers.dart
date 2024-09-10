@@ -1,33 +1,33 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-  class PoolSelectionPage extends StatefulWidget {
-    final String matchId;
+class PoolSelectionPage extends StatefulWidget {
+  final String matchId;
   final int teamId1;
   final int teamId2;
   final List<Map<String, dynamic>> pools;
   final Map<String, dynamic> preSelectedPlayers;
 
-
-    PoolSelectionPage({
-      required this.matchId,
+  PoolSelectionPage({
+    required this.matchId,
     required this.teamId1,
     required this.teamId2,
     required this.pools,
     required this.preSelectedPlayers,
   });
 
-    @override
-    _PoolSelectionPageState createState() => _PoolSelectionPageState();
-  }
+  @override
+  _PoolSelectionPageState createState() => _PoolSelectionPageState();
+}
 
-  class _PoolSelectionPageState extends State<PoolSelectionPage> {
+class _PoolSelectionPageState extends State<PoolSelectionPage> {
   Map<String, int> predictedRuns = {};
   Map<String, int> predictedWickets = {};
+  Map<String, int?> priorities = {}; // Track priorities for each player
+  int currentPriority = 12; // Start with the highest priority
 
   @override
   void initState() {
     super.initState();
-    // Initialize the maps with default values to avoid null issues
     widget.preSelectedPlayers.forEach((key, value) {
       if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
         String role = value.split(' - ')[1];
@@ -37,8 +37,34 @@
         if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder')) {
           predictedWickets[key] = 1; // Default value
         }
+        priorities[key] = null; // Initialize priority to null
       }
     });
+  }
+
+  void togglePriority(String playerId) {
+    setState(() {
+      if (priorities[playerId] == null && currentPriority > 0) {
+        // Assign the next available priority when the checkbox is checked
+        priorities[playerId] = currentPriority;
+        currentPriority--;
+      } else if (priorities[playerId] != null) {
+        // Uncheck the priority and reset it when the checkbox is unchecked
+        int uncheckingPriority = priorities[playerId]!;
+        // Reset the priorities for all players that have a higher or equal priority
+        priorities.forEach((key, value) {
+          if (value != null && value! <= uncheckingPriority) {
+            priorities[key] = null;
+            currentPriority++; // Increment currentPriority back for each unchecked priority
+          }
+        });
+      }
+    });
+  }
+
+  bool allPrioritiesAssigned() {
+    // Check if all players have an assigned priority
+    return priorities.values.every((priority) => priority != null);
   }
 
   @override
@@ -50,12 +76,12 @@
       body: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
-          // Display preselected players with dropdowns
+          // Display preselected players with dropdowns and priority checkboxes
           ...widget.preSelectedPlayers.entries.map((entry) {
             if (entry.key != 'poolName' && entry.key != 'joinedSlots' && entry.key != 'totalSlots') {
-              String roleAndTeam = entry.value.split(' - ')[1]; // This now contains both role and team name
-    String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
-    String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract just the team name
+              String roleAndTeam = entry.value.split(' - ')[1]; // Contains both role and team name
+              String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
+              String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract just the team name
 
               return Container(
                 margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -74,7 +100,9 @@
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // First column: Player details
                     Expanded(
+                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -83,89 +111,134 @@
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                  'Player ID: ${entry.key}, Role: $role, Team: $teamName', // Display role and team name
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
+                            'Player ID: ${entry.key}, Role: $role, Team: $teamName', // Display role and team name
+                            style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                          ),
                         ],
                       ),
                     ),
-                    if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder'))
-                      SizedBox(
-                        width: 100,
-                        child: DropdownButtonFormField<int>(
-                          value: predictedRuns[entry.key],
-                          items: [for (int i = 10; i <= 100; i += 10) DropdownMenuItem(value: i, child: Text('$i'))],
-                          onChanged: (value) {
-                            setState(() {
-                              predictedRuns[entry.key] = value!;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Runs',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                            border: OutlineInputBorder(),
+
+                    // Second column: Dropdowns and priority checkbox stacked vertically
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Runs and Wickets dropdowns
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder'))
+                                SizedBox(
+                                  width: 80,
+                                  child: DropdownButtonFormField<int>(
+                                    value: predictedRuns[entry.key],
+                                    items: [for (int i = 10; i <= 100; i += 10) DropdownMenuItem(value: i, child: Text('$i'))],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        predictedRuns[entry.key] = value!;
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      labelText: 'Runs',
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    style: TextStyle(fontSize: 14, color: Colors.black), // Text color
+                                  ),
+                                ),
+                              if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder'))
+                                SizedBox(
+                                  width: 80,
+                                  child: DropdownButtonFormField<int>(
+                                    value: predictedWickets[entry.key],
+                                    items: [for (int i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        predictedWickets[entry.key] = value!;
+                                      });
+                                    },
+                                    decoration: InputDecoration(
+                                      labelText: 'Wickets',
+                                      contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    style: TextStyle(fontSize: 14, color: Colors.black), // Text color
+                                  ),
+                                ),
+                            ],
                           ),
-                          style: TextStyle(fontSize: 14, color: Colors.black), // Text color
-                        ),
-                      ),
-                    if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder'))
-                      SizedBox(
-                        width: 100,
-                        child: DropdownButtonFormField<int>(
-                          value: predictedWickets[entry.key],
-                          items: [for (int i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))],
-                          onChanged: (value) {
-                            setState(() {
-                              predictedWickets[entry.key] = value!;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            labelText: 'Wickets',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                            border: OutlineInputBorder(),
+                          
+                          SizedBox(height: 8.0), // Spacing between dropdowns and checkbox
+
+                          // Priority checkbox and label
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Checkbox(
+                                value: priorities[entry.key] != null, // Check if player has a priority
+                                onChanged: (value) {
+                                  togglePriority(entry.key); // Toggle priority when checked/unchecked
+                                },
+                                activeColor: Colors.green,
+                              ),
+                              if (priorities[entry.key] != null)
+                                Text(
+                                  'Priority: ${priorities[entry.key]}', // Display assigned priority
+                                  style: TextStyle(fontSize: 14, color: Colors.blue),
+                                ),
+                            ],
                           ),
-                          style: TextStyle(fontSize: 14, color: Colors.black), // Text color
-                        ),
+                        ],
                       ),
+                    ),
                   ],
                 ),
               );
             }
             return SizedBox.shrink();
           }).toList(),
+
+          // Confirm Selection Button
           Padding(
-  padding: const EdgeInsets.symmetric(vertical: 16.0),
-  child: ElevatedButton(
-    child: Text('Confirm Selection'),
-    onPressed: () {
-      // Pass detailed player data back to previous page
-      Map<String, dynamic> detailedPlayers = {};
-      widget.preSelectedPlayers.forEach((key, value) {
-        if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
-          String playerName = value.split(' - ')[0];  // Extract the player's name
-          String roleAndTeam = value.split(' - ')[1]; // Contains both role and team name
-          String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
-          String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract the team name
-          
-          detailedPlayers[key] = {
-            'PlayerName': playerName,
-            'PredictedRuns': predictedRuns[key] ?? 0,
-            'PredictedWickets': predictedWickets[key] ?? 0,
-            'TeamName': teamName,  // Add the team name to the map
-          };
-        }
-      });
-      Navigator.pop(context, {
-        'poolName': widget.preSelectedPlayers['poolName'],
-        'joinedSlots': widget.preSelectedPlayers['joinedSlots'],
-        'totalSlots': widget.preSelectedPlayers['totalSlots'],
-        'players': detailedPlayers
-      });
-    },
-  ),
-)
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: ElevatedButton(
+              child: Text('Confirm Selection'),
+              onPressed: allPrioritiesAssigned() // Only enable if all priorities are assigned
+                  ? () {
+                      // Pass detailed player data back to previous page
+                      Map<String, dynamic> detailedPlayers = {};
+                      widget.preSelectedPlayers.forEach((key, value) {
+                        if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
+                          String playerName = value.split(' - ')[0]; // Extract the player's name
+                          String roleAndTeam = value.split(' - ')[1]; // Contains both role and team name
+                          String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
+                          String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract the team name
 
-
+                          detailedPlayers[key] = {
+                            'PlayerName': playerName,
+                            'PredictedRuns': predictedRuns[key] ?? 0,
+                            'PredictedWickets': predictedWickets[key] ?? 0,
+                            'TeamName': teamName,
+                            'Priority': priorities[key], // Add the priority to the map
+                          };
+                        }
+                      });
+                      Navigator.pop(context, {
+                        'poolName': widget.preSelectedPlayers['poolName'],
+                        'joinedSlots': widget.preSelectedPlayers['joinedSlots'],
+                        'totalSlots': widget.preSelectedPlayers['totalSlots'],
+                        'players': detailedPlayers, // Pass detailed player data back
+                      });
+                    }
+                  : null, // Disable button if not all priorities are assigned
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                  (states) => allPrioritiesAssigned() ? const Color.fromARGB(255, 2, 38, 67) : Colors.grey, // Change button color based on state
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
