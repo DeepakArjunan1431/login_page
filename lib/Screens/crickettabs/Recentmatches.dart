@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:login_page/Models/Model.dart';
+import 'package:login_page/Models/Model.dart'; // Import your models here.
+import 'package:login_page/Screens/crickettabs/scorecard.dart';
+// import 'package:login_page/score_card.dart'; // Import ScoreCard widget/model.
 
 class Recentmatches extends StatefulWidget {
   final String apiUrl =
@@ -86,13 +88,12 @@ class _RecentMatchesState extends State<Recentmatches> {
                         final match = recentMatches[index];
                         return GestureDetector(
                           onTap: () {
-                            // Define the action to take when the card is tapped.
-                            // For example, you can navigate to a new page.
+                            // On match tap, navigate to the ScoreDetails page
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => MatchDetailsPage(
-                                  match: match,
+                                builder: (context) => ScoreDetailsPage(
+                                  matchId: match.matchInfo.matchId,
                                 ),
                               ),
                             );
@@ -152,152 +153,6 @@ class _RecentMatchesState extends State<Recentmatches> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class MatchDetailsPage extends StatefulWidget {
-  final Match match;
-
-  MatchDetailsPage({required this.match});
-
-  @override
-  _MatchDetailsPageState createState() => _MatchDetailsPageState();
-}
-
-class _MatchDetailsPageState extends State<MatchDetailsPage> {
-  bool isTeam1DropdownOpen = false;
-  bool isTeam2DropdownOpen = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Match Details'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Series: ${widget.match.matchInfo.seriesName}',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 20),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  isTeam1DropdownOpen = !isTeam1DropdownOpen;
-                });
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${widget.match.matchInfo.team1.teamName}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${widget.match.matchScore?.team1Score.inngs1?.runs}/${widget.match.matchScore?.team1Score.inngs1?.wickets}',
-                    style: TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'Overs: ${widget.match.matchScore?.team1Score.inngs1?.overs}',
-                    style: TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                  // Icon(
-                  //   isTeam1DropdownOpen
-                  //       ? Icons.arrow_drop_up
-                  //       : Icons.arrow_drop_down,
-                  // ),
-                ],
-              ),
-            ),
-            if (isTeam1DropdownOpen)
-              DropdownButton<String>(
-                items: <String>['Option 1', 'Option 2', 'Option 3']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  // Handle dropdown item selection
-                },
-              ),
-            SizedBox(height: 10),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  isTeam2DropdownOpen = !isTeam2DropdownOpen;
-                });
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${widget.match.matchInfo.team2.teamName}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '${widget.match.matchScore?.team2Score?.inngs1?.runs}/${widget.match.matchScore?.team2Score?.inngs1?.wickets}',
-                    style: TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'Overs: ${widget.match.matchScore?.team2Score?.inngs1?.overs}',
-                    style: TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                  // Icon(
-                  //   isTeam2DropdownOpen
-                  //       ? Icons.arrow_drop_up
-                  //       : Icons.arrow_drop_down,
-                  // ),
-                ],
-              ),
-            ),
-            if (isTeam2DropdownOpen)
-              DropdownButton<String>(
-                items: <String>['Option A', 'Option B', 'Option C']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  // Handle dropdown item selection
-                },
-              ),
-            SizedBox(height: 20),
-            Text(
-              'Status: ${widget.match.matchInfo.status}',
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
-            // You can add more details as needed
-          ],
-        ),
       ),
     );
   }

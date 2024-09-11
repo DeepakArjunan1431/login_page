@@ -336,57 +336,57 @@ class TossResults {
     };
 }
 
-class ScoreCard {
-    int matchId;
-    int inningsId;
-    int timeScore;
-    BatTeamDetails batTeamDetails;
-    BowlTeamDetails bowlTeamDetails;
-    ScoreDetails scoreDetails;
-    ExtrasData extrasData;
-    PpData ppData;
-    Map<String, WicketsDatum> wicketsData;
-    Map<String, PartnershipsDatum> partnershipsData;
+  class ScoreCard {
+      int matchId;
+      int inningsId;
+      int timeScore;
+      BatTeamDetails batTeamDetails;
+      BowlTeamDetails bowlTeamDetails;
+      ScoreDetails scoreDetails;
+      ExtrasData extrasData;
+      PpData ppData;
+      Map<String, WicketsDatum> wicketsData;
+      Map<String, PartnershipsDatum> partnershipsData;
 
-    ScoreCard({
-        required this.matchId,
-        required this.inningsId,
-        required this.timeScore,
-        required this.batTeamDetails,
-        required this.bowlTeamDetails,
-        required this.scoreDetails,
-        required this.extrasData,
-        required this.ppData,
-        required this.wicketsData,
-        required this.partnershipsData,
-    });
+      ScoreCard({
+          required this.matchId,
+          required this.inningsId,
+          required this.timeScore,
+          required this.batTeamDetails,
+          required this.bowlTeamDetails,
+          required this.scoreDetails,
+          required this.extrasData,
+          required this.ppData,
+          required this.wicketsData,
+          required this.partnershipsData,
+      });
 
-    factory ScoreCard.fromJson(Map<String, dynamic> json) => ScoreCard(
-        matchId: json["matchId"],
-        inningsId: json["inningsId"],
-        timeScore: json["timeScore"],
-        batTeamDetails: BatTeamDetails.fromJson(json["batTeamDetails"]),
-        bowlTeamDetails: BowlTeamDetails.fromJson(json["bowlTeamDetails"]),
-        scoreDetails: ScoreDetails.fromJson(json["scoreDetails"]),
-        extrasData: ExtrasData.fromJson(json["extrasData"]),
-        ppData: PpData.fromJson(json["ppData"]),
-        wicketsData: Map.from(json["wicketsData"]).map((k, v) => MapEntry<String, WicketsDatum>(k, WicketsDatum.fromJson(v))),
-        partnershipsData: Map.from(json["partnershipsData"]).map((k, v) => MapEntry<String, PartnershipsDatum>(k, PartnershipsDatum.fromJson(v))),
-    );
+      factory ScoreCard.fromJson(Map<String, dynamic> json) => ScoreCard(
+          matchId: json["matchId"],
+          inningsId: json["inningsId"],
+          timeScore: json["timeScore"],
+          batTeamDetails: BatTeamDetails.fromJson(json["batTeamDetails"]),
+          bowlTeamDetails: BowlTeamDetails.fromJson(json["bowlTeamDetails"]),
+          scoreDetails: ScoreDetails.fromJson(json["scoreDetails"]),
+          extrasData: ExtrasData.fromJson(json["extrasData"]),
+          ppData: PpData.fromJson(json["ppData"]),
+          wicketsData: Map.from(json["wicketsData"]).map((k, v) => MapEntry<String, WicketsDatum>(k, WicketsDatum.fromJson(v))),
+          partnershipsData: Map.from(json["partnershipsData"]).map((k, v) => MapEntry<String, PartnershipsDatum>(k, PartnershipsDatum.fromJson(v))),
+      );
 
-    Map<String, dynamic> toJson() => {
-        "matchId": matchId,
-        "inningsId": inningsId,
-        "timeScore": timeScore,
-        "batTeamDetails": batTeamDetails.toJson(),
-        "bowlTeamDetails": bowlTeamDetails.toJson(),
-        "scoreDetails": scoreDetails.toJson(),
-        "extrasData": extrasData.toJson(),
-        "ppData": ppData.toJson(),
-        "wicketsData": Map.from(wicketsData).map((k, v) => MapEntry<String, dynamic>(k, v.toJson())),
-        "partnershipsData": Map.from(partnershipsData).map((k, v) => MapEntry<String, dynamic>(k, v.toJson())),
-    };
-}
+      Map<String, dynamic> toJson() => {
+          "matchId": matchId,
+          "inningsId": inningsId,
+          "timeScore": timeScore,
+          "batTeamDetails": batTeamDetails.toJson(),
+          "bowlTeamDetails": bowlTeamDetails.toJson(),
+          "scoreDetails": scoreDetails.toJson(),
+          "extrasData": extrasData.toJson(),
+          "ppData": ppData.toJson(),
+          "wicketsData": Map.from(wicketsData).map((k, v) => MapEntry<String, dynamic>(k, v.toJson())),
+          "partnershipsData": Map.from(partnershipsData).map((k, v) => MapEntry<String, dynamic>(k, v.toJson())),
+      };
+  }
 
 class BatTeamDetails {
     int batTeamId;
@@ -543,6 +543,8 @@ class BowlTeamDetails {
         bowlTeamShortName: json["bowlTeamShortName"],
         bowlersData: BowlersData.fromJson(json["bowlersData"]),
     );
+
+  get teamName => null;
 
     Map<String, dynamic> toJson() => {
         "bowlTeamId": bowlTeamId,
