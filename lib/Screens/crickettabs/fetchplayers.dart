@@ -20,7 +20,7 @@ class PoolSelectionPage extends StatefulWidget {
 }
 
 class _PoolSelectionPageState extends State<PoolSelectionPage> {
-  Map<String, int> predictedRuns = {};
+  Map<String, String> predictedRuns = {}; // Changed to String to store ranges
   Map<String, int> predictedWickets = {};
   Map<String, int?> priorities = {}; // Track priorities for each player
   int currentPriority = 12; // Start with the highest priority
@@ -32,7 +32,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
       if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
         String role = value.split(' - ')[1];
         if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder')) {
-          predictedRuns[key] = 10; // Default value
+          predictedRuns[key] = '0-10'; // Default value as a range
         }
         if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder')) {
           predictedWickets[key] = 1; // Default value
@@ -53,7 +53,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
         int uncheckingPriority = priorities[playerId]!;
         // Reset the priorities for all players that have a higher or equal priority
         priorities.forEach((key, value) {
-          if (value != null && value! <= uncheckingPriority) {
+          if (value != null && value <= uncheckingPriority) {
             priorities[key] = null;
             currentPriority++; // Increment currentPriority back for each unchecked priority
           }
@@ -120,7 +120,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
 
                     // Second column: Dropdowns and priority checkbox stacked vertically
                     Expanded(
-                      flex: 1,
+                      flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -130,10 +130,13 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                             children: [
                               if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder'))
                                 SizedBox(
-                                  width: 80,
-                                  child: DropdownButtonFormField<int>(
+                                  width: 100, // Increased width to accommodate longer text
+                                  child: DropdownButtonFormField<String>(
                                     value: predictedRuns[entry.key],
-                                    items: [for (int i = 10; i <= 100; i += 10) DropdownMenuItem(value: i, child: Text('$i'))],
+                                    items: [
+                                      for (int i = 0; i < 100; i += 10)
+                                        DropdownMenuItem(value: '$i-${i+10}', child: Text('$i-${i+10}'))
+                                    ],
                                     onChanged: (value) {
                                       setState(() {
                                         predictedRuns[entry.key] = value!;
@@ -217,7 +220,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
 
                           detailedPlayers[key] = {
                             'PlayerName': playerName,
-                            'PredictedRuns': predictedRuns[key] ?? 0,
+                            'PredictedRuns': predictedRuns[key] ?? '0-10',
                             'PredictedWickets': predictedWickets[key] ?? 0,
                             'TeamName': teamName,
                             'Priority': priorities[key], // Add the priority to the map
