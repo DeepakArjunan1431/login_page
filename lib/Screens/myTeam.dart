@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:login_page/Screens/scorecomparisonpage.dart';
 
 class UserPoolsPage extends StatefulWidget {
   @override
@@ -109,6 +110,18 @@ class _UserPoolsPageState extends State<UserPoolsPage> {
                                 ..._buildPlayerList(pool['team']),
                               ],
                             ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ScoreComparisonPage(
+                                    matchId: int.parse(pool['matchId']),
+                                    poolType: pool['poolType'],
+                                    poolName: pool['poolName'],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         );
                       },
