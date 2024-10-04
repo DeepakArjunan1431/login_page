@@ -117,7 +117,8 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                         ],
                       ),
                     ),
-
+// Add space between the two columns
+    SizedBox(width:5), // Adjust the width to your desired spacing
                     // Second column: Dropdowns and priority checkbox stacked vertically
                     Expanded(
                       flex: 2,
@@ -130,7 +131,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                             children: [
                               if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder'))
                                 SizedBox(
-                                  width: 100, // Increased width to accommodate longer text
+                                  width: 90, // Increased width to accommodate longer text
                                   child: DropdownButtonFormField<String>(
                                     value: predictedRuns[entry.key],
                                     items: [
@@ -152,7 +153,7 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                                 ),
                               if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder'))
                                 SizedBox(
-                                  width: 80,
+                                  width: 70,
                                   child: DropdownButtonFormField<int>(
                                     value: predictedWickets[entry.key],
                                     items: [for (int i = 1; i <= 10; i++) DropdownMenuItem(value: i, child: Text('$i'))],
