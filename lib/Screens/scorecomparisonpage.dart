@@ -20,18 +20,20 @@ class ScoreComparisonPage extends StatefulWidget {
   _ScoreComparisonPageState createState() => _ScoreComparisonPageState();
 }
 
+
 class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  late Future<ScoreCard> futureScoreCard;
-  late Future<Map<String, dynamic>> futurePredictedScores;
+  Future<ScoreCard>? _futureScoreCard;
+  Future<List<Map<String, dynamic>>>? _futureSelectedPlayers;
+  int _totalScore = 0; // New variable to keep track of total score
 
   @override
   void initState() {
     super.initState();
-    futureScoreCard = fetchScoreCard(widget.matchId);
-    futurePredictedScores = fetchPredictedScores();
+    _futureScoreCard = fetchScoreCard(widget.matchId);
+    _futureSelectedPlayers = fetchSelectedPlayers();
   }
 
   Future<ScoreCard> fetchScoreCard(int matchId) async {
@@ -55,7 +57,7 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
     }
   }
 
-  Future<Map<String, dynamic>> fetchPredictedScores() async {
+  Future<List<Map<String, dynamic>>> fetchSelectedPlayers() async {
     try {
       String? userId = _auth.currentUser?.uid;
       if (userId == null) {
@@ -88,21 +90,35 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
         throw Exception('User not found in pool');
       }
 
-      return poolData['userJoins'][userId];
+      List<Map<String, dynamic>> selectedPlayers = [];
+      List<dynamic> teams = poolData['userJoins'][userId]['teams'] ?? [];
+      for (var team in teams) {
+        List<dynamic> players = team['players'] ?? [];
+        for (var player in players) {
+          int priority = player['Priority'] ?? 999;
+          selectedPlayers.add({
+            ...player,
+            'priority': priority,
+          });
+        }
+      }
+
+      selectedPlayers.sort((a, b) => (b['priority'] as num).compareTo(a['priority'] as num));
+
+      return selectedPlayers;
     } catch (e) {
-      print('Error fetching predicted scores: $e');
+      print('Error fetching selected players: $e');
       rethrow;
     }
   }
 
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Score Comparison'),
       ),
       body: FutureBuilder(
-        future: Future.wait([futureScoreCard, futurePredictedScores]),
+        future: Future.wait([_futureScoreCard!, _futureSelectedPlayers!]),
         builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -110,21 +126,8 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
             ScoreCard scoreCard = snapshot.data![0];
-            Map<String, dynamic> predictedScores = snapshot.data![1];
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Match ID: ${widget.matchId}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 16),
-                    for (var innings in scoreCard.innings)
-                      _buildInningsComparison(innings, predictedScores),
-                  ],
-                ),
-              ),
-            );
+            List<Map<String, dynamic>> selectedPlayers = snapshot.data![1];
+            return _buildComparison(scoreCard, selectedPlayers);
           } else {
             return Center(child: Text('No data available'));
           }
@@ -133,100 +136,198 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
     );
   }
 
- Widget _buildInningsComparison(InningsDetails innings, Map<String, dynamic> predictedScores) {
-    Set<String> allPlayers = Set<String>();
-    allPlayers.addAll(innings.batTeamDetails.batsmenData.values.map((batsman) => batsman.batName));
-    allPlayers.addAll(innings.bowlTeamDetails.bowlersData.values.map((bowler) => bowler.bowlName));
+  Widget _buildComparison(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
+  _totalScore = 0; // Reset total score before building the list
+  return ListView(
+    padding: EdgeInsets.all(16.0),
+    children: [
+      Text('Match ID: ${widget.matchId}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      SizedBox(height: 16),
+      Text('Player Comparisons:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      SizedBox(height: 8),
+      ...selectedPlayers.map((player) => _buildPlayerCard(player, scoreCard)),
+      SizedBox(height: 16),
+      // New Total Score UI
+      _buildTotalScoreCard(), // Call the new method for the total score
+    ],
+  );
+}
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(innings.batTeamDetails.batTeamName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        SizedBox(height: 8),
-        Text('Actual Score: ${innings.scoreDetails.runs}/${innings.scoreDetails.wickets} (${innings.scoreDetails.overs} overs)'),
-        SizedBox(height: 16),
-        Text('Player Comparisons:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        SizedBox(height: 8),
-        Table(
-          columnWidths: {
-            0: FlexColumnWidth(3),
-            1: FlexColumnWidth(2),
-            2: FlexColumnWidth(2),
-            3: FlexColumnWidth(2),
-            4: FlexColumnWidth(2),
-          },
+Widget _buildTotalScoreCard() {
+  return Container(
+    margin: EdgeInsets.symmetric(vertical: 20),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.greenAccent, Colors.blueAccent],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(15),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.6),
+          spreadRadius: 3,
+          blurRadius: 8,
+          offset: Offset(2, 4), // changes position of shadow
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.emoji_events_rounded,
+            size: 40,
+            color: Colors.white,
+          ),
+          SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Total Score',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: 5),
+              Text(
+                '$_totalScore',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.yellowAccent,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
+  Widget _buildPlayerCard(Map<String, dynamic> player, ScoreCard scoreCard) {
+    String playerName = player['PlayerName'] ?? 'Unknown';
+    String teamName = player['TeamName'] ?? 'Unknown';
+    String playerId = player['PlayerId']?.toString() ?? 'N/A';
+    int priority = player['priority'] ?? 999;
+    
+    var actualBatsman = scoreCard.innings.expand((innings) => innings.batTeamDetails.batsmenData.values)
+        .firstWhere(
+          (batsman) => batsman.batId.toString() == playerId,
+          orElse: () => BatsmenDatum(
+            batId: 0,
+            batName: playerName,
+            runs: 0,
+            balls: 0,
+            fours: 0,
+            sixes: 0,
+            strikeRate: 0.0,
+            outDesc: '',
+            isCaptain: false,
+            isKeeper: false,
+          ),
+        );
+    var actualBowler = scoreCard.innings.expand((innings) => innings.bowlTeamDetails.bowlersData.values)
+        .firstWhere(
+          (bowler) => bowler.bowlerId.toString() == playerId,
+          orElse: () => BowlerDatum(
+            bowlerId: 0,
+            bowlName: playerName,
+            overs: 0,
+            maidens: 0,
+            runs: 0,
+            wickets: 0,
+            economy: 0.0,
+            isCaptain: false,
+            isKeeper: false,
+          ),
+        );
+
+    int calculatedScore = _calculateScore(player, actualBatsman, actualBowler);
+    _totalScore += calculatedScore; // Add to total score
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TableRow(
-              children: ['Player', 'Pred. Runs', 'Actual Runs', 'Pred. Wkts', 'Actual Wkts']
-                  .map((e) => TableCell(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Text(e, style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ))
-                  .toList(),
+            Text(playerName, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text('Team: $teamName | Player ID: $playerId | Priority: $priority', 
+                 style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildStatColumn('Runs', player['PredictedRuns']?.toString() ?? 'N/A', actualBatsman.runs.toString()),
+                _buildStatColumn('Wickets', player['PredictedWickets']?.toString() ?? 'N/A', actualBowler.wickets.toString()),
+              ],
             ),
-            ...allPlayers.map((playerName) {
-              var predictedPlayer = _findPredictedPlayer(predictedScores, playerName);
-              var actualBatsman = innings.batTeamDetails.batsmenData.values
-                  .firstWhere(
-                    (batsman) => batsman.batName == playerName,
-                    orElse: () => BatsmenDatum(
-                      batId: 0,
-                      batName: playerName,
-                      runs: 0,
-                      balls: 0,
-                      fours: 0,
-                      sixes: 0,
-                      strikeRate: 0.0,
-                      outDesc: '',
-                      isCaptain: false,
-                      isKeeper: false,
-                    ),
-                  );
-              var actualBowler = innings.bowlTeamDetails.bowlersData.values
-                  .firstWhere(
-                    (bowler) => bowler.bowlName == playerName,
-                    orElse: () => BowlerDatum(
-                      bowlerId: 0,
-                      bowlName: playerName,
-                      overs: 0,
-                      maidens: 0,
-                      runs: 0,
-                      wickets: 0,
-                      economy: 0.0,
-                      isCaptain: false,
-                      isKeeper: false,
-                    ),
-                  );
-              
-              return TableRow(
-                children: [
-                  TableCell(child: Text(playerName)),
-                  TableCell(child: Text(predictedPlayer?['PredictedRuns']?.toString() ?? 'N/A')),
-                  TableCell(child: Text(actualBatsman.runs.toString())),
-                  TableCell(child: Text(predictedPlayer?['PredictedWickets']?.toString() ?? 'N/A')),
-                  TableCell(child: Text(actualBowler.wickets.toString())),
-                ],
-              );
-            }),
+            SizedBox(height: 12),
+            Text('Calculated Score: $calculatedScore', 
+                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
         ),
-        SizedBox(height: 32),
-      ],
+      ),
     );
   }
 
-  Map<String, dynamic>? _findPredictedPlayer(Map<String, dynamic> predictedScores, String playerName) {
-    List<dynamic> teams = predictedScores['teams'] ?? [];
-    for (var team in teams) {
-      List<dynamic> players = team['players'] ?? [];
-      for (var player in players) {
-        if (player['PlayerName'] == playerName) {
-          return player;
-        }
-      }
-    }
-    return null;
+
+  int _calculateScore(Map<String, dynamic> player, BatsmenDatum actualBatsman, BowlerDatum actualBowler) {
+  int priority = player['priority'] ?? 999;
+  int predictedRunsLow = int.tryParse(player['PredictedRuns'].toString().split('-')[0]) ?? 0;
+  int predictedRunsHigh = int.tryParse(player['PredictedRuns'].toString().split('-')[1]) ?? 0;
+  int predictedWickets = int.tryParse(player['PredictedWickets'].toString()) ?? 0;
+  int actualRuns = actualBatsman.runs;
+  int actualWickets = actualBowler.wickets;
+
+  bool runsMatch = actualRuns >= predictedRunsLow && actualRuns <= predictedRunsHigh;
+  bool wicketsMatch = actualWickets == predictedWickets;
+
+  if (runsMatch && wicketsMatch) {
+    return priority;
+  } else if (wicketsMatch && predictedWickets > 0) {
+    return priority;  // This line ensures bowlers like Manan Sharma get their priority score
+  } else if (runsMatch && (predictedRunsLow > 0 || predictedRunsHigh > 0)) {
+    return priority;
+  } else {
+    return 0;
+  }
+}
+  Widget _buildStatColumn(String label, String predicted, String actual) {
+    return Column(
+      children: [
+        Text(label, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Predicted:', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+                Text('Actual:', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+              ],
+            ),
+            SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(predicted, style: TextStyle(fontSize: 14)),
+                Text(actual, style: TextStyle(fontSize: 14)),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
