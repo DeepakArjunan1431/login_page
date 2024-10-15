@@ -2,15 +2,18 @@
 
 class ScoreCard {
   final List<InningsDetails> innings;
+  final MatchHeader matchHeader;
 
   ScoreCard({
     required this.innings,
+    required this.matchHeader,
   });
 
   factory ScoreCard.fromJson(Map<String, dynamic> json) {
     var scoreCardData = json['scoreCard'] as List<dynamic>;
     return ScoreCard(
       innings: scoreCardData.map((inning) => InningsDetails.fromJson(inning)).toList(),
+      matchHeader: MatchHeader.fromJson(json['matchHeader'] ?? {}),
     );
   }
 }
@@ -216,6 +219,53 @@ class WicketsDatum {
       batId: json['batId'] ?? 0,
       batName: json['batName'] ?? '',
       wicketDesc: json['wicketDesc'] ?? '',
+    );
+  }
+}
+
+class MatchHeader {
+  final int matchId;
+  final String matchDescription;
+  final String matchFormat;
+  final String matchType;
+  final bool complete;
+  final bool domestic;
+  final int matchStartTimestamp;
+  final int matchCompleteTimestamp;
+  final bool dayNight;
+  final int year;
+  final String state;
+  final String status;
+
+  MatchHeader({
+    required this.matchId,
+    required this.matchDescription,
+    required this.matchFormat,
+    required this.matchType,
+    required this.complete,
+    required this.domestic,
+    required this.matchStartTimestamp,
+    required this.matchCompleteTimestamp,
+    required this.dayNight,
+    required this.year,
+    required this.state,
+    required this.status,
+  });
+
+  factory MatchHeader.fromJson(Map<String, dynamic> json) {
+    return MatchHeader(
+      matchId: json['matchId'] ?? 0,
+      matchDescription: json['matchDescription'] ?? '',
+      matchFormat: json['matchFormat'] ?? '',
+      matchType: json['matchType'] ?? '',
+      complete: json['complete'] ?? false,
+      domestic: json['domestic'] ?? false,
+      matchStartTimestamp: json['matchStartTimestamp'] ?? 0,
+      matchCompleteTimestamp: json['matchCompleteTimestamp'] ?? 0,
+      dayNight: json['dayNight'] ?? false,
+      year: json['year'] ?? 0,
+      state: json['state'] ?? '',
+      status: json['status'] ?? '',
     );
   }
 }

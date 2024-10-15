@@ -27,7 +27,9 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
   
   Future<ScoreCard>? _futureScoreCard;
   Future<List<Map<String, dynamic>>>? _futureSelectedPlayers;
-  int _totalScore = 0; // New variable to keep track of total score
+  int _totalScore = 0;
+  bool _isMatchCompleted = false;
+  bool _scoreUpdated = false;
 
   @override
   void initState() {
@@ -112,7 +114,33 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
     }
   }
 
-  Widget build(BuildContext context) {
+ Future<void> updateFirebaseScore(int totalScore) async {
+    if (_scoreUpdated) return; // Prevent multiple updates
+
+    try {
+      String? userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        throw Exception('No user is currently signed in');
+      }
+
+      await _firestore
+          .collection('Pool')
+          .doc(widget.poolType)
+          .update({
+        'matches.${widget.matchId}.${widget.poolName}.userJoins.$userId.totalScore': totalScore,
+      });
+
+      setState(() {
+        _scoreUpdated = true;
+      });
+
+      print('Total score updated in Firebase: $totalScore');
+    } catch (e) {
+      print('Error updating score in Firebase: $e');
+    }
+  }
+
+ Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Score Comparison'),
@@ -127,6 +155,11 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
           } else if (snapshot.hasData) {
             ScoreCard scoreCard = snapshot.data![0];
             List<Map<String, dynamic>> selectedPlayers = snapshot.data![1];
+            _isMatchCompleted = _checkMatchCompleted(scoreCard);
+            if (_isMatchCompleted && !_scoreUpdated) {
+              _calculateTotalScore(selectedPlayers, scoreCard);
+              updateFirebaseScore(_totalScore);
+            }
             return _buildComparison(scoreCard, selectedPlayers);
           } else {
             return Center(child: Text('No data available'));
@@ -135,95 +168,28 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
       ),
     );
   }
+  
+ bool _checkMatchCompleted(ScoreCard scoreCard) {
+    return scoreCard.matchHeader.matchCompleteTimestamp != 0;
+  }
 
-  Widget _buildComparison(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
-  _totalScore = 0; // Reset total score before building the list
-  return ListView(
-    padding: EdgeInsets.all(16.0),
-    children: [
-      Text('Match ID: ${widget.matchId}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      SizedBox(height: 16),
-      Text('Player Comparisons:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      SizedBox(height: 8),
-      ...selectedPlayers.map((player) => _buildPlayerCard(player, scoreCard)),
-      SizedBox(height: 16),
-      // New Total Score UI
-      _buildTotalScoreCard(), // Call the new method for the total score
-    ],
-  );
-}
+  void _calculateTotalScore(List<Map<String, dynamic>> selectedPlayers, ScoreCard scoreCard) {
+    _totalScore = 0;
+    for (var player in selectedPlayers) {
+      var actualBatsman = _findActualBatsman(player, scoreCard);
+      var actualBowler = _findActualBowler(player, scoreCard);
+      _totalScore += _calculateScore(player, actualBatsman, actualBowler);
+    }
+  }
 
-Widget _buildTotalScoreCard() {
-  return Container(
-    margin: EdgeInsets.symmetric(vertical: 20),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Colors.greenAccent, Colors.blueAccent],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(15),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.grey.withOpacity(0.6),
-          spreadRadius: 3,
-          blurRadius: 8,
-          offset: Offset(2, 4), // changes position of shadow
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.emoji_events_rounded,
-            size: 40,
-            color: Colors.white,
-          ),
-          SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Total Score',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 5),
-              Text(
-                '$_totalScore',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.yellowAccent,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-  Widget _buildPlayerCard(Map<String, dynamic> player, ScoreCard scoreCard) {
-    String playerName = player['PlayerName'] ?? 'Unknown';
-    String teamName = player['TeamName'] ?? 'Unknown';
+  BatsmenDatum _findActualBatsman(Map<String, dynamic> player, ScoreCard scoreCard) {
     String playerId = player['PlayerId']?.toString() ?? 'N/A';
-    int priority = player['priority'] ?? 999;
-    
-    var actualBatsman = scoreCard.innings.expand((innings) => innings.batTeamDetails.batsmenData.values)
+    return scoreCard.innings.expand((innings) => innings.batTeamDetails.batsmenData.values)
         .firstWhere(
           (batsman) => batsman.batId.toString() == playerId,
           orElse: () => BatsmenDatum(
             batId: 0,
-            batName: playerName,
+            batName: player['PlayerName'] ?? 'Unknown',
             runs: 0,
             balls: 0,
             fours: 0,
@@ -234,12 +200,16 @@ Widget _buildTotalScoreCard() {
             isKeeper: false,
           ),
         );
-    var actualBowler = scoreCard.innings.expand((innings) => innings.bowlTeamDetails.bowlersData.values)
+  }
+
+  BowlerDatum _findActualBowler(Map<String, dynamic> player, ScoreCard scoreCard) {
+    String playerId = player['PlayerId']?.toString() ?? 'N/A';
+    return scoreCard.innings.expand((innings) => innings.bowlTeamDetails.bowlersData.values)
         .firstWhere(
           (bowler) => bowler.bowlerId.toString() == playerId,
           orElse: () => BowlerDatum(
             bowlerId: 0,
-            bowlName: playerName,
+            bowlName: player['PlayerName'] ?? 'Unknown',
             overs: 0,
             maidens: 0,
             runs: 0,
@@ -249,9 +219,103 @@ Widget _buildTotalScoreCard() {
             isKeeper: false,
           ),
         );
+  }
+
+ Widget _buildComparison(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
+    return ListView(
+      padding: EdgeInsets.all(16.0),
+      children: [
+        Text('Match ID: ${widget.matchId}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        Text('Match Start: ${_formatTimestamp(scoreCard.matchHeader.matchStartTimestamp)}', 
+             style: TextStyle(fontSize: 16)),
+        Text('Match Complete: ${_formatTimestamp(scoreCard.matchHeader.matchCompleteTimestamp)}', 
+             style: TextStyle(fontSize: 16)),
+        SizedBox(height: 16),
+        Text('Player Comparisons:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        SizedBox(height: 8),
+        ...selectedPlayers.map((player) => _buildPlayerCard(player, scoreCard)),
+        SizedBox(height: 16),
+        _buildTotalScoreCard(),
+      ],
+    );
+  }
+
+  String _formatTimestamp(int timestamp) {
+    if (timestamp == 0) return 'N/A';
+    DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+           '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
+  }
+
+ Widget _buildTotalScoreCard() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.greenAccent, Colors.blueAccent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.6),
+            spreadRadius: 3,
+            blurRadius: 8,
+            offset: Offset(2, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.emoji_events_rounded,
+              size: 40,
+              color: Colors.white,
+            ),
+            SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Total Score',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 5),
+                Text(
+                  _isMatchCompleted ? '$_totalScore' : 'Pending',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.yellowAccent,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayerCard(Map<String, dynamic> player, ScoreCard scoreCard) {
+    String playerName = player['PlayerName'] ?? 'Unknown';
+    String teamName = player['TeamName'] ?? 'Unknown';
+    String playerId = player['PlayerId']?.toString() ?? 'N/A';
+    int priority = player['priority'] ?? 999;
+    
+    var actualBatsman = _findActualBatsman(player, scoreCard);
+    var actualBowler = _findActualBowler(player, scoreCard);
 
     int calculatedScore = _calculateScore(player, actualBatsman, actualBowler);
-    _totalScore += calculatedScore; // Add to total score
 
     return Card(
       margin: EdgeInsets.only(bottom: 16),
@@ -273,7 +337,7 @@ Widget _buildTotalScoreCard() {
               ],
             ),
             SizedBox(height: 12),
-            Text('Calculated Score: $calculatedScore', 
+            Text('Calculated Score: ${_isMatchCompleted ? calculatedScore : "Pending"}', 
                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
         ),
