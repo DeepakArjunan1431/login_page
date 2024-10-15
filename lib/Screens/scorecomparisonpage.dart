@@ -20,13 +20,11 @@ class ScoreComparisonPage extends StatefulWidget {
   _ScoreComparisonPageState createState() => _ScoreComparisonPageState();
 }
 
-
 class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
-  Future<ScoreCard>? _futureScoreCard;
-  Future<List<Map<String, dynamic>>>? _futureSelectedPlayers;
+  late Future<Map<String, dynamic>> _futureData;
   int _totalScore = 0;
   bool _isMatchCompleted = false;
   bool _scoreUpdated = false;
@@ -34,10 +32,17 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
   @override
   void initState() {
     super.initState();
-    _futureScoreCard = fetchScoreCard(widget.matchId);
-    _futureSelectedPlayers = fetchSelectedPlayers();
+    _futureData = _loadData();
   }
 
+  Future<Map<String, dynamic>> _loadData() async {
+    final scoreCard = await fetchScoreCard(widget.matchId);
+    final selectedPlayers = await fetchSelectedPlayers();
+    return {
+      'scoreCard': scoreCard,
+      'selectedPlayers': selectedPlayers,
+    };
+  }
   Future<ScoreCard> fetchScoreCard(int matchId) async {
     final url = 'https://cricbuzz-cricket.p.rapidapi.com/mcenter/v1/$matchId/scard';
     final headers = {
@@ -114,7 +119,15 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
     }
   }
 
- Future<void> updateFirebaseScore(int totalScore) async {
+ void _calculateAndUpdateScore(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
+    _isMatchCompleted = scoreCard.matchHeader.state.toLowerCase() == 'complete';
+    if (_isMatchCompleted && !_scoreUpdated) {
+      _calculateTotalScore(selectedPlayers, scoreCard);
+      updateFirebaseScore(_totalScore);
+    }
+  }
+
+  Future<void> updateFirebaseScore(int totalScore) async {
     if (_scoreUpdated) return; // Prevent multiple updates
 
     try {
@@ -139,27 +152,55 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
       print('Error updating score in Firebase: $e');
     }
   }
+ 
+  String _getMatchState(String state) {
+    switch (state.toLowerCase()) {
+      case 'preview':
+        return 'Preview';
+      case 'complete':
+        return 'Complete';
+      default:
+        return 'In Progress';
+    }
+  }
 
- Widget build(BuildContext context) {
+  Color _getStateColor(String state) {
+    switch (state.toLowerCase()) {
+      case 'preview':
+        return Colors.blue;
+      case 'complete':
+        return Colors.green;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  // void _calculateAndUpdateScore(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
+  //   setState(() {
+  //     _isMatchCompleted = scoreCard.matchHeader.state.toLowerCase() == 'complete';
+  //     if (_isMatchCompleted && !_scoreUpdated) {
+  //       _calculateTotalScore(selectedPlayers, scoreCard);
+  //       updateFirebaseScore(_totalScore);
+  //     }
+  //   });
+  // }
+
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Score Comparison'),
       ),
-      body: FutureBuilder(
-        future: Future.wait([_futureScoreCard!, _futureSelectedPlayers!]),
-        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _futureData,
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
-            ScoreCard scoreCard = snapshot.data![0];
-            List<Map<String, dynamic>> selectedPlayers = snapshot.data![1];
-            _isMatchCompleted = _checkMatchCompleted(scoreCard);
-            if (_isMatchCompleted && !_scoreUpdated) {
-              _calculateTotalScore(selectedPlayers, scoreCard);
-              updateFirebaseScore(_totalScore);
-            }
+            final scoreCard = snapshot.data!['scoreCard'] as ScoreCard;
+            final selectedPlayers = snapshot.data!['selectedPlayers'] as List<Map<String, dynamic>>;
+            _calculateAndUpdateScore(scoreCard, selectedPlayers);
             return _buildComparison(scoreCard, selectedPlayers);
           } else {
             return Center(child: Text('No data available'));
@@ -167,10 +208,6 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
         },
       ),
     );
-  }
-  
- bool _checkMatchCompleted(ScoreCard scoreCard) {
-    return scoreCard.matchHeader.matchCompleteTimestamp != 0;
   }
 
   void _calculateTotalScore(List<Map<String, dynamic>> selectedPlayers, ScoreCard scoreCard) {
@@ -221,7 +258,7 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
         );
   }
 
- Widget _buildComparison(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
+  Widget _buildComparison(ScoreCard scoreCard, List<Map<String, dynamic>> selectedPlayers) {
     return ListView(
       padding: EdgeInsets.all(16.0),
       children: [
@@ -231,12 +268,15 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
              style: TextStyle(fontSize: 16)),
         Text('Match Complete: ${_formatTimestamp(scoreCard.matchHeader.matchCompleteTimestamp)}', 
              style: TextStyle(fontSize: 16)),
+        SizedBox(height: 8),
+        Text('Match State: ${_getMatchState(scoreCard.matchHeader.state)}', 
+             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _getStateColor(scoreCard.matchHeader.state))),
         SizedBox(height: 16),
         Text('Player Comparisons:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         SizedBox(height: 8),
         ...selectedPlayers.map((player) => _buildPlayerCard(player, scoreCard)),
         SizedBox(height: 16),
-        _buildTotalScoreCard(),
+        _buildTotalScoreCard(scoreCard),
       ],
     );
   }
@@ -248,7 +288,7 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
            '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
   }
 
- Widget _buildTotalScoreCard() {
+  Widget _buildTotalScoreCard(ScoreCard scoreCard) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
@@ -337,7 +377,7 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
               ],
             ),
             SizedBox(height: 12),
-            Text('Calculated Score: ${_isMatchCompleted ? calculatedScore : "Pending"}', 
+             Text('Calculated Score: ${_isMatchCompleted ? _calculateScore(player, actualBatsman, actualBowler) : "Pending"}', 
                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
         ),
@@ -345,8 +385,7 @@ class _ScoreComparisonPageState extends State<ScoreComparisonPage> {
     );
   }
 
-
-  int _calculateScore(Map<String, dynamic> player, BatsmenDatum actualBatsman, BowlerDatum actualBowler) {
+    int _calculateScore(Map<String, dynamic> player, BatsmenDatum actualBatsman, BowlerDatum actualBowler) {
   int priority = player['priority'] ?? 999;
   int predictedRunsLow = int.tryParse(player['PredictedRuns'].toString().split('-')[0]) ?? 0;
   int predictedRunsHigh = int.tryParse(player['PredictedRuns'].toString().split('-')[1]) ?? 0;
