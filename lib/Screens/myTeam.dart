@@ -58,6 +58,7 @@ class _UserPoolsPageState extends State<UserPoolsPage> {
                         'poolType': poolType,
                         'poolName': poolName,
                         'team': team,
+                        'teamId': team['teamId'], // Add this line to fetch the teamId
                       });
                     }
                   }
@@ -106,6 +107,7 @@ class _UserPoolsPageState extends State<UserPoolsPage> {
                               children: [
                                 Text('Pool Type: ${pool['poolType']}'),
                                 Text('Pool Name: ${pool['poolName']}'),
+                                Text('Team ID: ${pool['teamId']}'), // Add this line to display the teamId
                                 Text('Players:'),
                                 ..._buildPlayerList(pool['team']),
                               ],
@@ -118,6 +120,7 @@ class _UserPoolsPageState extends State<UserPoolsPage> {
                                     matchId: int.parse(pool['matchId']),
                                     poolType: pool['poolType'],
                                     poolName: pool['poolName'],
+                                    teamId: pool['teamId'], // Add this line to pass the teamId
                                   ),
                                 ),
                               );
@@ -129,22 +132,21 @@ class _UserPoolsPageState extends State<UserPoolsPage> {
     );
   }
 
- List<Widget> _buildPlayerList(Map<String, dynamic> team) {
-  List<dynamic>? players = team['players'] as List<dynamic>?;
-  if (players == null || players.isEmpty) {
-    return [Text('  No players data available')];
-  }
-  return players.map((player) {
-    if (player is Map<String, dynamic>) {
-      return Text(
-        '  ${player['PlayerName'] ?? 'Unknown'} - '
-        'Team: ${player['TeamName'] ?? 'Unknown'}, ' // Display the team name
-        'Runs: ${player['PredictedRuns'] ?? 'N/A'}, '
-        'Wickets: ${player['PredictedWickets'] ?? 'N/A'}'
-      );
+  List<Widget> _buildPlayerList(Map<String, dynamic> team) {
+    List<dynamic>? players = team['players'] as List<dynamic>?;
+    if (players == null || players.isEmpty) {
+      return [Text('  No players data available')];
     }
-    return Text('  Invalid player data');
-  }).toList();
-}
-
+    return players.map((player) {
+      if (player is Map<String, dynamic>) {
+        return Text(
+          '  ${player['PlayerName'] ?? 'Unknown'} - '
+          'Team: ${player['TeamName'] ?? 'Unknown'}, '
+          'Runs: ${player['PredictedRuns'] ?? 'N/A'}, '
+          'Wickets: ${player['PredictedWickets'] ?? 'N/A'}'
+        );
+      }
+      return Text('  Invalid player data');
+    }).toList();
+  }
 }

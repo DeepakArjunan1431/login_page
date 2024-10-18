@@ -23,25 +23,28 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
   Map<String, String> predictedRuns = {}; // Changed to String to store ranges
   Map<String, int> predictedWickets = {};
   Map<String, int?> priorities = {}; // Track priorities for each player
+  Map<String, String> playerRoles = {};//  map to store player roles
   int currentPriority = 12; // Start with the highest priority
 
-  @override
+ 
+   @override
   void initState() {
     super.initState();
     widget.preSelectedPlayers.forEach((key, value) {
       if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
-        String role = value.split(' - ')[1];
-        if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder')) {
-          predictedRuns[key] = '0-10'; // Default value as a range
+        String role = value.split(' - ')[1].split('(')[0].trim().toLowerCase();
+        playerRoles[key] = role; // Store the role for each player
+
+        if (role.contains('batsman') || role.contains('allrounder')) {
+          predictedRuns[key] = '0-10';
         }
-        if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder')) {
-          predictedWickets[key] = 1; // Default value
+        if (role.contains('bowler') || role.contains('allrounder')) {
+          predictedWickets[key] = 1;
         }
-        priorities[key] = null; // Initialize priority to null
+        priorities[key] = null;
       }
     });
   }
-
   void togglePriority(String playerId) {
     setState(() {
       if (priorities[playerId] == null && currentPriority > 0) {
@@ -57,7 +60,8 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
             priorities[key] = null;
             currentPriority++; // Increment currentPriority back for each unchecked priority
           }
-        });
+        print('Priority toggled for player $playerId. New priorities: $priorities'); // Added print statement
+    });
       }
     });
   }
@@ -208,31 +212,43 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: ElevatedButton(
               child: Text('Confirm Selection'),
-              onPressed: allPrioritiesAssigned() // Only enable if all priorities are assigned
+              onPressed: allPrioritiesAssigned()
                   ? () {
-                      // Pass detailed player data back to previous page
                       Map<String, dynamic> detailedPlayers = {};
                       widget.preSelectedPlayers.forEach((key, value) {
                         if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
-                          String playerName = value.split(' - ')[0]; // Extract the player's name
-                          String roleAndTeam = value.split(' - ')[1]; // Contains both role and team name
-                          String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
-                          String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract the team name
+                          String playerName = value.split(' - ')[0];
+                          String roleAndTeam = value.split(' - ')[1];
+                          String role = roleAndTeam.split('(')[0].trim();
+                          String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim();
 
-                          detailedPlayers[key] = {
+                          // Create player data based on their role
+                          Map<String, dynamic> playerData = {
                             'PlayerName': playerName,
-                            'PredictedRuns': predictedRuns[key] ?? '0-10',
-                            'PredictedWickets': predictedWickets[key] ?? 0,
                             'TeamName': teamName,
-                            'Priority': priorities[key], // Add the priority to the map
+                            'Priority': priorities[key],
                           };
+
+                          if (role.toLowerCase().contains('batsman')) {
+                            playerData['PredictedRuns'] = predictedRuns[key] ?? '0-10';
+                          } else if (role.toLowerCase().contains('bowler')) {
+                            playerData['PredictedWickets'] = predictedWickets[key] ?? 0;
+                          } else if (role.toLowerCase().contains('allrounder')) {
+                            playerData['PredictedRuns'] = predictedRuns[key] ?? '0-10';
+                            playerData['PredictedWickets'] = predictedWickets[key] ?? 0;
+                          }
+
+                          detailedPlayers[key] = playerData;
                         }
                       });
+
+                      print('Confirmed selection: $detailedPlayers'); // For debugging
+
                       Navigator.pop(context, {
                         'poolName': widget.preSelectedPlayers['poolName'],
                         'joinedSlots': widget.preSelectedPlayers['joinedSlots'],
                         'totalSlots': widget.preSelectedPlayers['totalSlots'],
-                        'players': detailedPlayers, // Pass detailed player data back
+                        'players': detailedPlayers,
                       });
                     }
                   : null, // Disable button if not all priorities are assigned

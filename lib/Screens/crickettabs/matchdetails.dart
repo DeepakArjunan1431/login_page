@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:login_page/Screens/crickettabs/PoolJoinPage.dart';
 // import 'package:login_page/Screens/crickettabs/PoolSelectionPage.dart';
 import 'package:login_page/Screens/crickettabs/fetchplayers.dart';
+import 'package:uuid/uuid.dart';
 
 class MatchDetailsPage extends StatefulWidget {
   final String team1Name;
@@ -283,6 +284,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           );
           return;
         }
+        String teamId = Uuid().v4();
 
         // Prepare teamSelection with detailed player info and sort by priority in descending order
         List<Map<String, dynamic>> sortedPlayers = [];
@@ -302,6 +304,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
         sortedPlayers.sort((a, b) => b['Priority'].compareTo(a['Priority']));
 
         Map<String, dynamic> teamSelection = {
+          'teamId': teamId,
           'players': sortedPlayers
         };
 
@@ -325,7 +328,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully joined the pool!'),
+            content: Text('Successfully joined the pool! Team ID: $teamId'),
             backgroundColor: Colors.green,
           ),
         );
