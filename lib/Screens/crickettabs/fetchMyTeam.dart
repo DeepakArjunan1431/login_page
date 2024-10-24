@@ -7,12 +7,14 @@ class ExistingTeamSelection extends StatefulWidget {
   final String poolType;
   final String team1Name;
   final String team2Name;
+  final VoidCallback onCreateNewTeam;
 
   ExistingTeamSelection({
     required this.matchId,
     required this.poolType,
     required this.team1Name,
     required this.team2Name,
+    required this.onCreateNewTeam,
   });
 
   @override
@@ -162,6 +164,7 @@ Future<void> _fetchExistingTeams() async {
       Map<String, dynamic> matchData = matches[widget.matchId] ?? {};
 
       String? selectedPoolName;
+      // ignore: unused_local_variable
       int? selectedPoolSlots;
       int maxSize = _getMaxSizeForPoolType(widget.poolType);
 
@@ -274,7 +277,7 @@ Future<void> _fetchExistingTeams() async {
   }
 
  
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -286,84 +289,129 @@ Future<void> _fetchExistingTeams() async {
           ),
         ],
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      SizedBox(height: 16),
-                      Text(errorMessage!, style: TextStyle(color: Colors.red)),
-                      SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchExistingTeams,
-                        child: Text('Retry'),
-                      ),
-                    ],
+      body: Column(
+        children: [
+          // Only show Create New Team button if there are less than 6 teams
+          if (existingTeams.length < 6)
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onCreateNewTeam();
+                },
+                child: Text(
+                  'Add New Team',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.0,
+                    color: Colors.black,
                   ),
-                )
-              : existingTeams.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.sports_cricket, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text('No teams found', style: TextStyle(fontSize: 18)),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: EdgeInsets.all(16),
-                      itemCount: existingTeams.length,
-                      itemBuilder: (context, index) {
-                        var team = existingTeams[index];
-                        List<dynamic> players = team['players'] ?? [];
-                        
-                        return Card(
-                          elevation: 4,
-                          margin: EdgeInsets.only(bottom: 16),
-                          child: ExpansionTile(
-                            title: Text('Team ${index + 1}'),
-                            subtitle: Text('${players.length} Players'),
-                            children: [
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: players.length,
-                                itemBuilder: (context, playerIndex) {
-                                  var player = players[playerIndex];
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      child: Text('${player['Priority']}'),
+                ),
+                style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
+                  minimumSize: MaterialStateProperty.all(Size(double.infinity, 48)),
+                ),
+              ),
+            ),
+          if (existingTeams.length >= 6)
+            Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Select Using the Existing selected Team',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          Divider(),
+          Expanded(
+            child: isLoading
+                ? Center(child: CircularProgressIndicator())
+                : errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline, size: 48, color: Colors.red),
+                            SizedBox(height: 16),
+                            Text(errorMessage!, style: TextStyle(color: Colors.red)),
+                            SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _fetchExistingTeams,
+                              child: Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : existingTeams.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.sports_cricket, size: 64, color: Colors.grey),
+                                SizedBox(height: 16),
+                                Text('No teams found', style: TextStyle(fontSize: 18)),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: EdgeInsets.all(16),
+                            itemCount: existingTeams.length,
+                            itemBuilder: (context, index) {
+                              var team = existingTeams[index];
+                              List<dynamic> players = team['players'] ?? [];
+
+                              return Card(
+                                elevation: 4,
+                                margin: EdgeInsets.only(bottom: 16),
+                                child: ExpansionTile(
+                                  title: Text('Team ${index + 1}'),
+                                  subtitle: Text('${players.length} Players'),
+                                  children: [
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      itemCount: players.length,
+                                      itemBuilder: (context, playerIndex) {
+                                        var player = players[playerIndex];
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            child: Text('${player['Priority']}'),
+                                          ),
+                                          title: Text(player['PlayerName'] ?? ''),
+                                          subtitle: Text(
+                                            'Runs: ${player['PredictedRuns'] ?? 'N/A'}, ' +
+                                            'Wickets: ${player['PredictedWickets'] ?? 'N/A'}',
+                                          ),
+                                        );
+                                      },
                                     ),
-                                    title: Text(player['PlayerName'] ?? ''),
-                                    subtitle: Text(
-                                      'Runs: ${player['PredictedRuns'] ?? 'N/A'}, ' +
-                                      'Wickets: ${player['PredictedWickets'] ?? 'N/A'}',
+                                    Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: ElevatedButton(
+                                        onPressed: () => _joinPoolWithExistingTeam(team),
+                                        child: Text('Select This Team'),
+                                        style: ButtonStyle(
+                                          backgroundColor: MaterialStateProperty.all(
+                                            Color(0xFFFFE5C4),
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  );
-                                },
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(16),
-                                child: ElevatedButton(
-                                  onPressed: () => _joinPoolWithExistingTeam(team),
-                                  child: Text('Select This Team'),
-                                  style: ButtonStyle(
-                                    backgroundColor: MaterialStateProperty.all(
-                                      Color(0xFFFFE5C4),
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
+          ),
+       
+        ],
+      ),
     );
   }
 }

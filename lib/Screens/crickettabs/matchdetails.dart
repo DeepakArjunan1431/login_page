@@ -451,133 +451,114 @@ void _navigateToPoolSelection(String poolType) async {
         ),
       ),
       body: ListView.builder(
-      padding: EdgeInsets.all(16.0),
-      itemCount: groupedPools.length,
-      itemBuilder: (context, index) {
-        String poolType = groupedPools.keys.elementAt(index);
-        List<Map<String, dynamic>> poolsOfType = groupedPools[poolType]!;
-        int totalJoinedSlots = poolsOfType.fold<int>(0, (sum, pool) {
-          int slots = pool['joinedSlots'] is int ? pool['joinedSlots'] : int.parse(pool['joinedSlots'].toString());
-          return sum + slots;
-        });
+        padding: EdgeInsets.all(16.0),
+        itemCount: groupedPools.length,
+        itemBuilder: (context, index) {
+          String poolType = groupedPools.keys.elementAt(index);
+          List<Map<String, dynamic>> poolsOfType = groupedPools[poolType]!;
+          int totalJoinedSlots = poolsOfType.fold<int>(0, (sum, pool) {
+            int slots = pool['joinedSlots'] is int ? pool['joinedSlots'] : int.parse(pool['joinedSlots'].toString());
+            return sum + slots;
+          });
 
-        int totalSlots = poolsOfType.fold<int>(0, (sum, pool) {
-          int slots = pool['totalSlots'] is int ? pool['totalSlots'] : int.parse(pool['totalSlots'].toString());
-          return sum + slots;
-        });
+          int totalSlots = poolsOfType.fold<int>(0, (sum, pool) {
+            int slots = pool['totalSlots'] is int ? pool['totalSlots'] : int.parse(pool['totalSlots'].toString());
+            return sum + slots;
+          });
 
-        double progressValue = totalSlots != 0 ? totalJoinedSlots / totalSlots : 0.0;
+          double progressValue = totalSlots != 0 ? totalJoinedSlots / totalSlots : 0.0;
 
-        int selectedTeamsCount = poolsOfType.fold<int>(0, (sum, pool) {
-          return sum + (selectedTeamsCounts[pool['name']] ?? 0);
-        });
+          // int selectedTeamsCount = poolsOfType.fold<int>(0, (sum, pool) {
+          //   return sum + (selectedTeamsCounts[pool['name']] ?? 0);
+          // });
 
-        return Card(
-          elevation: 4.0,
-          margin: EdgeInsets.symmetric(vertical: 8.0),
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  poolType,
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
+          return Card(
+            elevation: 4.0,
+            margin: EdgeInsets.symmetric(vertical: 8.0),
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    poolType,
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.0,
+                    ),
                   ),
-                ),
-                SizedBox(height: 8.0),
-                LinearProgressIndicator(
-                  value: progressValue,
-                  backgroundColor: Colors.grey[300],
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                ),
-                SizedBox(height: 8.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$totalJoinedSlots of $totalSlots slots joined',
-                          style: TextStyle(
-                            fontFamily: 'Roboto',
-                            fontSize: 14.0,
+                  SizedBox(height: 8.0),
+                  LinearProgressIndicator(
+                    value: progressValue,
+                    backgroundColor: Colors.grey[300],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                  SizedBox(height: 8.0),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$totalJoinedSlots of $totalSlots slots joined',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 14.0,
+                            ),
                           ),
-                        ),
-                        Text(
-                              'Remaining Teams: ${6 - (selectedTeamsCounts['totalTeams'] ?? 0)}',
-                              style: TextStyle(
-                                fontFamily: 'Roboto',
-                                fontSize: 14.0,
-                                color: Colors.grey[600],
+                          Text(
+                            'Remaining Teams: ${6 - (selectedTeamsCounts['totalTeams'] ?? 0)}',
+                            style: TextStyle(
+                              fontFamily: 'Roboto',
+                              fontSize: 14.0,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ExistingTeamSelection(
+                                matchId: widget.matchId,
+                                poolType: poolType,
+                                team1Name: widget.team1Name,
+                                team2Name: widget.team2Name,
+                                onCreateNewTeam: () => _navigateToPoolSelection(poolType),
                               ),
                             ),
-                      ],
-                    ),
-                    
-                    ElevatedButton(
-                      onPressed: () => _navigateToPoolSelection(poolType),
-                      child: Text(
-                        'Join',
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14.0,
-                          color: Colors.black,
+                          ).then((value) {
+                            if (value == true) {
+                              _fetchMaxSlotsForPools();
+                              _fetchSelectedTeamsCount();
+                            }
+                          });
+                        },
+                        child: Text(
+                          'Join',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14.0,
+                            color: Colors.black,
+                          ),
+                        ),
+                        style: ButtonStyle(
+                          backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
                         ),
                       ),
-                      style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
-                      ),
-                    ),
-                    SizedBox(width: 8.0),
-                  ElevatedButton(
-  onPressed: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ExistingTeamSelection(
-          matchId: widget.matchId,
-          poolType: poolType,
-          team1Name: widget.team1Name,
-          team2Name: widget.team2Name,
-        ),
-      ),
-    ).then((value) {
-      if (value == true) {
-        // Refresh both pools data and team count
-        _fetchMaxSlotsForPools();
-        _fetchSelectedTeamsCount(); // Add this line to refresh the team count
-      }
-    });
-  },
-  child: Text(
-    'MY Team',
-    style: TextStyle(
-      fontFamily: 'Roboto',
-      fontWeight: FontWeight.bold,
-      fontSize: 14.0,
-      color: Colors.black,
-    ),
-  ),
-  style: ButtonStyle(
-    backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
-  ),
-),
-
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    ),
-
+          );
+        },
+      ),
     );
   }
 }
