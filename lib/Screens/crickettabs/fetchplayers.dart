@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 
 class PoolSelectionPage extends StatefulWidget {
   final String matchId;
@@ -20,56 +23,152 @@ class PoolSelectionPage extends StatefulWidget {
 }
 
 class _PoolSelectionPageState extends State<PoolSelectionPage> {
-  Map<String, String> predictedRuns = {}; // Changed to String to store ranges
+  Map<String, String> predictedRuns = {};
   Map<String, int> predictedWickets = {};
-  Map<String, int?> priorities = {}; // Track priorities for each player
-  Map<String, String> playerRoles = {};//  map to store player roles
-  int currentPriority = 12; // Start with the highest priority
+  Map<String, int?> priorities = {};
+  Map<String, String> playerRoles = {};
+  int currentPriority = 12;
 
- 
-   @override
+  @override
   void initState() {
     super.initState();
     widget.preSelectedPlayers.forEach((key, value) {
       if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
         String role = value.split(' - ')[1].split('(')[0].trim().toLowerCase();
-        playerRoles[key] = role; // Store the role for each player
+        playerRoles[key] = role;
 
-        if (role.contains('batsman') || role.contains('allrounder')) {
+        // Only set predictions based on specific roles
+        if (role.contains('batsman')) {
           predictedRuns[key] = '0-10';
-        }
-        if (role.contains('bowler') || role.contains('allrounder')) {
+          predictedWickets.remove(key); // Ensure wickets is null for batsmen
+        } else if (role.contains('bowler')) {
+          predictedWickets[key] = 1;
+          predictedRuns.remove(key); // Ensure runs is null for bowlers
+        } else if (role.contains('allrounder')) {
+          predictedRuns[key] = '0-10';
           predictedWickets[key] = 1;
         }
         priorities[key] = null;
       }
     });
   }
+
+
   void togglePriority(String playerId) {
     setState(() {
       if (priorities[playerId] == null && currentPriority > 0) {
-        // Assign the next available priority when the checkbox is checked
         priorities[playerId] = currentPriority;
         currentPriority--;
       } else if (priorities[playerId] != null) {
-        // Uncheck the priority and reset it when the checkbox is unchecked
         int uncheckingPriority = priorities[playerId]!;
-        // Reset the priorities for all players that have a higher or equal priority
         priorities.forEach((key, value) {
           if (value != null && value <= uncheckingPriority) {
             priorities[key] = null;
-            currentPriority++; // Increment currentPriority back for each unchecked priority
+            currentPriority++;
           }
-        print('Priority toggled for player $playerId. New priorities: $priorities'); // Added print statement
-    });
+        });
       }
     });
   }
 
   bool allPrioritiesAssigned() {
-    // Check if all players have an assigned priority
     return priorities.values.every((priority) => priority != null);
   }
+
+  Future<void> storeSelectedTeam(Map<String, dynamic> detailedPlayers) async {
+  try {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      String userId = user.uid;
+      String teamId = const Uuid().v4(); // Add Uuid import at the top of the file
+
+      // Convert detailedPlayers to the structured format
+      List<Map<String, dynamic>> sortedPlayers = [];
+      detailedPlayers.forEach((playerId, playerData) {
+        sortedPlayers.add({
+          'PlayerId': playerId,
+          'PlayerName': playerData['PlayerName'],
+          'PredictedRuns': playerData['PredictedRuns'],
+          'PredictedWickets': playerData['PredictedWickets'],
+          'TeamName': playerData['TeamName'],
+          'Priority': playerData['Priority'],
+        });
+      });
+
+      // Sort players by priority
+      sortedPlayers.sort((a, b) => b['Priority'].compareTo(a['Priority']));
+
+      Map<String, dynamic> teamSelection = {
+        'teamId': teamId,
+        'players': sortedPlayers
+      };
+
+      // Get the current document
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('selected_team')
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        Map<String, dynamic> matchData = data[widget.matchId] as Map<String, dynamic>? ?? {};
+        Map<String, dynamic> teams = matchData['teams'] as Map<String, dynamic>? ?? {};
+
+        // Check if the number of teams is less than 6
+        if (teams.length < 6) {
+          await FirebaseFirestore.instance
+              .collection('selected_team')
+              .doc(userId)
+              .set({
+            widget.matchId: {
+              'teams': {
+                ...teams,
+                teamId: teamSelection,
+              },
+            }
+          }, SetOptions(merge: true));
+
+          print('Selected team stored successfully for user $userId');
+        } else {
+          print('Maximum limit of 6 teams reached in storage. Oldest team will be replaced.');
+          // Remove the oldest team and add the new one
+          var oldestTeamId = teams.keys.first;
+          teams.remove(oldestTeamId);
+          teams[teamId] = teamSelection;
+
+          await FirebaseFirestore.instance
+              .collection('selected_team')
+              .doc(userId)
+              .set({
+            widget.matchId: {
+              'teams': teams,
+            }
+          }, SetOptions(merge: true));
+
+          print('New team stored, replacing the oldest one for user $userId');
+        }
+      } else {
+        // If the document doesn't exist, create it with the first team
+        await FirebaseFirestore.instance
+            .collection('selected_team')
+            .doc(userId)
+            .set({
+          widget.matchId: {
+            'teams': {
+              teamId: teamSelection,
+            },
+          }
+        });
+
+        print('First team stored successfully for user $userId');
+      }
+    } else {
+      print('No user currently signed in');
+    }
+  } catch (e) {
+    print('Error storing selected team: $e');
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +179,11 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
       body: ListView(
         padding: EdgeInsets.all(16.0),
         children: [
-          // Display preselected players with dropdowns and priority checkboxes
           ...widget.preSelectedPlayers.entries.map((entry) {
             if (entry.key != 'poolName' && entry.key != 'joinedSlots' && entry.key != 'totalSlots') {
-              String roleAndTeam = entry.value.split(' - ')[1]; // Contains both role and team name
-              String role = roleAndTeam.split('(')[0].trim();  // Extract just the role
-              String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim(); // Extract just the team name
+              String roleAndTeam = entry.value.split(' - ')[1];
+              String role = roleAndTeam.split('(')[0].trim().toLowerCase();
+              String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim();
 
               return Container(
                 margin: EdgeInsets.symmetric(vertical: 8.0),
@@ -104,38 +202,34 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // First column: Player details
                     Expanded(
                       flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            entry.value.split(' - ')[0], // Display full name
+                            entry.value.split(' - ')[0],
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Player ID: ${entry.key}, Role: $role, Team: $teamName', // Display role and team name
+                            'Player ID: ${entry.key}, Role: $role, Team: $teamName',
                             style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                           ),
                         ],
                       ),
                     ),
-// Add space between the two columns
-    SizedBox(width:5), // Adjust the width to your desired spacing
-                    // Second column: Dropdowns and priority checkbox stacked vertically
+                    SizedBox(width: 5),
                     Expanded(
                       flex: 2,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Runs and Wickets dropdowns
-                          Row(
+                         Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (role.toLowerCase().contains('batsman') || role.toLowerCase().contains('allrounder'))
+                              if (role.contains('batsman') || role.contains('allrounder'))
                                 SizedBox(
-                                  width: 90, // Increased width to accommodate longer text
+                                  width: 90,
                                   child: DropdownButtonFormField<String>(
                                     value: predictedRuns[entry.key],
                                     items: [
@@ -152,10 +246,10 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                                       contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                       border: OutlineInputBorder(),
                                     ),
-                                    style: TextStyle(fontSize: 14, color: Colors.black), // Text color
+                                    style: TextStyle(fontSize: 14, color: Colors.black),
                                   ),
                                 ),
-                              if (role.toLowerCase().contains('bowler') || role.toLowerCase().contains('allrounder'))
+                              if (role.contains('bowler') || role.contains('allrounder'))
                                 SizedBox(
                                   width: 70,
                                   child: DropdownButtonFormField<int>(
@@ -171,28 +265,26 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                                       contentPadding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                                       border: OutlineInputBorder(),
                                     ),
-                                    style: TextStyle(fontSize: 14, color: Colors.black), // Text color
+                                    style: TextStyle(fontSize: 14, color: Colors.black),
                                   ),
                                 ),
                             ],
-                          ),
-                          
-                          SizedBox(height: 8.0), // Spacing between dropdowns and checkbox
-
-                          // Priority checkbox and label
+                                ),
+                            
+                          SizedBox(height: 8.0),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               Checkbox(
-                                value: priorities[entry.key] != null, // Check if player has a priority
+                                value: priorities[entry.key] != null,
                                 onChanged: (value) {
-                                  togglePriority(entry.key); // Toggle priority when checked/unchecked
+                                  togglePriority(entry.key);
                                 },
                                 activeColor: Colors.green,
                               ),
                               if (priorities[entry.key] != null)
                                 Text(
-                                  'Priority: ${priorities[entry.key]}', // Display assigned priority
+                                  'Priority: ${priorities[entry.key]}',
                                   style: TextStyle(fontSize: 14, color: Colors.blue),
                                 ),
                             ],
@@ -207,33 +299,34 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
             return SizedBox.shrink();
           }).toList(),
 
-          // Confirm Selection Button
-          Padding(
+        Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: ElevatedButton(
               child: Text('Confirm Selection'),
               onPressed: allPrioritiesAssigned()
-                  ? () {
+                  ? () async {
                       Map<String, dynamic> detailedPlayers = {};
                       widget.preSelectedPlayers.forEach((key, value) {
                         if (key != 'poolName' && key != 'joinedSlots' && key != 'totalSlots') {
                           String playerName = value.split(' - ')[0];
                           String roleAndTeam = value.split(' - ')[1];
-                          String role = roleAndTeam.split('(')[0].trim();
+                          String role = roleAndTeam.split('(')[0].trim().toLowerCase();
                           String teamName = roleAndTeam.split('(')[1].replaceAll(')', '').trim();
 
-                          // Create player data based on their role
                           Map<String, dynamic> playerData = {
                             'PlayerName': playerName,
                             'TeamName': teamName,
                             'Priority': priorities[key],
                           };
 
-                          if (role.toLowerCase().contains('batsman')) {
+                          // Set predictions based on role
+                          if (role.contains('batsman')) {
                             playerData['PredictedRuns'] = predictedRuns[key] ?? '0-10';
-                          } else if (role.toLowerCase().contains('bowler')) {
+                            playerData['PredictedWickets'] = null;  // Explicitly set to null for batsmen
+                          } else if (role.contains('bowler')) {
+                            playerData['PredictedRuns'] = null;  // Explicitly set to null for bowlers
                             playerData['PredictedWickets'] = predictedWickets[key] ?? 0;
-                          } else if (role.toLowerCase().contains('allrounder')) {
+                          } else if (role.contains('allrounder')) {
                             playerData['PredictedRuns'] = predictedRuns[key] ?? '0-10';
                             playerData['PredictedWickets'] = predictedWickets[key] ?? 0;
                           }
@@ -242,23 +335,23 @@ class _PoolSelectionPageState extends State<PoolSelectionPage> {
                         }
                       });
 
-                      print('Confirmed selection: $detailedPlayers'); // For debugging
+                      await storeSelectedTeam(detailedPlayers);
 
-                      Navigator.pop(context, {
+                      Navigator.of(context).pop({
                         'poolName': widget.preSelectedPlayers['poolName'],
                         'joinedSlots': widget.preSelectedPlayers['joinedSlots'],
                         'totalSlots': widget.preSelectedPlayers['totalSlots'],
                         'players': detailedPlayers,
                       });
                     }
-                  : null, // Disable button if not all priorities are assigned
+                  : null,
               style: ButtonStyle(
                 backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                  (states) => allPrioritiesAssigned() ? const Color.fromARGB(255, 2, 38, 67) : Colors.grey, // Change button color based on state
+                  (states) => allPrioritiesAssigned() ? const Color.fromARGB(255, 2, 38, 67) : Colors.grey,
                 ),
               ),
             ),
-          ),
+        ),
         ],
       ),
     );

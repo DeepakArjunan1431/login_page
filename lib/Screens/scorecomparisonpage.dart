@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:login_page/Models/CricketModel.dart';
+import 'package:login_page/Screens/LeaderboardPage.dart';
 
 class ScoreComparisonPage extends StatefulWidget {
   final int matchId;
@@ -256,6 +257,24 @@ void _calculateAndUpdateScore(ScoreCard scoreCard, List<dynamic> players) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Score Comparison'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.leaderboard),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => LeaderboardPage(
+                    matchId: widget.matchId,
+                    poolType: widget.poolType,
+                    poolName: widget.poolName,
+                  ),
+                ),
+              );
+            },
+            tooltip: 'View Leaderboard',
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _futureData,

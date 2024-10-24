@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:login_page/Screens/crickettabs/PoolJoinPage.dart';
+import 'package:login_page/Screens/crickettabs/fetchMyTeam.dart';
 // import 'package:login_page/Screens/crickettabs/PoolSelectionPage.dart';
 import 'package:login_page/Screens/crickettabs/fetchplayers.dart';
 import 'package:uuid/uuid.dart';
@@ -30,6 +31,7 @@ class MatchDetailsPage extends StatefulWidget {
 
 class _MatchDetailsPageState extends State<MatchDetailsPage> {
   List<Map<String, dynamic>> pools = [];
+  Map<String, int> selectedTeamsCounts = {};
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     print('TeamId2: ${widget.teamId2}');
     _initializePools();
     _fetchMaxSlotsForPools();
+    _fetchSelectedTeamsCount();
   }
 
   Future<void> _initializePools() async {
@@ -177,6 +180,55 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
+Future<void> _fetchSelectedTeamsCount() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        String userId = user.uid;
+        
+        // Get the document from selected_team collection
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('selected_team')
+            .doc(userId)
+            .get();
+
+        if (doc.exists) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          
+          // Check if there's data for this match
+          if (data.containsKey(widget.matchId)) {
+            Map<String, dynamic> matchData = data[widget.matchId] as Map<String, dynamic>;
+            
+            // Get the teams data
+            if (matchData.containsKey('teams')) {
+              Map<String, dynamic> teamsData = matchData['teams'] as Map<String, dynamic>;
+              
+              // Count the number of teams
+              int teamsCount = teamsData.length;
+              
+              setState(() {
+                // Update the count in the state
+                selectedTeamsCounts['totalTeams'] = teamsCount;
+              });
+              
+              print('Total teams found for match ${widget.matchId}: $teamsCount');
+            }
+          } else {
+            setState(() {
+              selectedTeamsCounts['totalTeams'] = 0;
+            });
+            print('No teams found for match ${widget.matchId}');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching selected teams count: $e');
+      setState(() {
+        selectedTeamsCounts['totalTeams'] = 0;
+      });
+    }
+  }
+
   int _getMaxSizeForPoolType(String poolType) {
     switch (poolType) {
       case 'Pool':
@@ -225,10 +277,9 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
     }
   }
 
- void _navigateToPoolSelection(String poolType) async {
+void _navigateToPoolSelection(String poolType) async {
   List<Map<String, dynamic>> poolsOfType = pools.where((pool) => pool['type'] == poolType).toList();
 
-  // Select the first available pool or create a new one if needed
   Map<String, dynamic> selectedPool = poolsOfType.firstWhere(
     (pool) => pool['joinedSlots'] < pool['totalSlots'],
     orElse: () => {
@@ -253,7 +304,6 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
   );
 
   if (result != null && result is Map<String, dynamic>) {
-    // Navigate to PoolSelectionPage
     final finalResult = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -284,9 +334,9 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           );
           return;
         }
+
         String teamId = Uuid().v4();
 
-        // Prepare teamSelection with detailed player info and sort by priority in descending order
         List<Map<String, dynamic>> sortedPlayers = [];
 
         finalResult['players'].forEach((playerId, playerData) {
@@ -300,7 +350,6 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           });
         });
 
-        // Sort the players based on the 'Priority' value in descending order (12 to 1)
         sortedPlayers.sort((a, b) => b['Priority'].compareTo(a['Priority']));
 
         Map<String, dynamic> teamSelection = {
@@ -308,6 +357,7 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           'players': sortedPlayers
         };
 
+        // Update the pool in Firestore
         await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
           'matches': {
             widget.matchId: {
@@ -324,7 +374,9 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
           }
         }, SetOptions(merge: true));
 
+        // Refresh both the pools data and selected teams count
         await _fetchMaxSlotsForPools();
+        await _fetchSelectedTeamsCount(); // Add this line to refresh the team count
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -399,79 +451,133 @@ class _MatchDetailsPageState extends State<MatchDetailsPage> {
         ),
       ),
       body: ListView.builder(
-        padding: EdgeInsets.all(16.0),
-        itemCount: groupedPools.length,
-        itemBuilder: (context, index) {
-          String poolType = groupedPools.keys.elementAt(index);
-          List<Map<String, dynamic>> poolsOfType = groupedPools[poolType]!;
-          int totalJoinedSlots = poolsOfType.fold<int>(0, (sum, pool) {
-            int slots = pool['joinedSlots'] is int ? pool['joinedSlots'] : int.parse(pool['joinedSlots'].toString());
-            return sum + slots;
-          });
+      padding: EdgeInsets.all(16.0),
+      itemCount: groupedPools.length,
+      itemBuilder: (context, index) {
+        String poolType = groupedPools.keys.elementAt(index);
+        List<Map<String, dynamic>> poolsOfType = groupedPools[poolType]!;
+        int totalJoinedSlots = poolsOfType.fold<int>(0, (sum, pool) {
+          int slots = pool['joinedSlots'] is int ? pool['joinedSlots'] : int.parse(pool['joinedSlots'].toString());
+          return sum + slots;
+        });
 
-          int totalSlots = poolsOfType.fold<int>(0, (sum, pool) {
-            int slots = pool['totalSlots'] is int ? pool['totalSlots'] : int.parse(pool['totalSlots'].toString());
-            return sum + slots;
-          });
+        int totalSlots = poolsOfType.fold<int>(0, (sum, pool) {
+          int slots = pool['totalSlots'] is int ? pool['totalSlots'] : int.parse(pool['totalSlots'].toString());
+          return sum + slots;
+        });
 
-          double progressValue = totalSlots != 0 ? totalJoinedSlots / totalSlots : 0.0;
+        double progressValue = totalSlots != 0 ? totalJoinedSlots / totalSlots : 0.0;
 
-          return Card(
-            elevation: 4.0,
-            margin: EdgeInsets.symmetric(vertical: 8.0),
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    poolType,
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
-                    ),
+        int selectedTeamsCount = poolsOfType.fold<int>(0, (sum, pool) {
+          return sum + (selectedTeamsCounts[pool['name']] ?? 0);
+        });
+
+        return Card(
+          elevation: 4.0,
+          margin: EdgeInsets.symmetric(vertical: 8.0),
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  poolType,
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16.0,
                   ),
-                  SizedBox(height: 8.0),
-                  LinearProgressIndicator(
-                    value: progressValue,
-                    backgroundColor: Colors.grey[300],
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                  ),
-                  SizedBox(height: 8.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$totalJoinedSlots of $totalSlots slots joined',
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontSize: 14.0,
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => _navigateToPoolSelection(poolType),
-                        child: Text(
-                          'Join',
+                ),
+                SizedBox(height: 8.0),
+                LinearProgressIndicator(
+                  value: progressValue,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+                SizedBox(height: 8.0),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$totalJoinedSlots of $totalSlots slots joined',
                           style: TextStyle(
                             fontFamily: 'Roboto',
-                            fontWeight: FontWeight.bold,
                             fontSize: 14.0,
-                            color: Colors.black,
                           ),
                         ),
-                        style: ButtonStyle(
-                          backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
+                        Text(
+                              'Remaining Teams: ${6 - (selectedTeamsCounts['totalTeams'] ?? 0)}',
+                              style: TextStyle(
+                                fontFamily: 'Roboto',
+                                fontSize: 14.0,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                      ],
+                    ),
+                    
+                    ElevatedButton(
+                      onPressed: () => _navigateToPoolSelection(poolType),
+                      child: Text(
+                        'Join',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14.0,
+                          color: Colors.black,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+                      style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
+                      ),
+                    ),
+                    SizedBox(width: 8.0),
+                  ElevatedButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExistingTeamSelection(
+          matchId: widget.matchId,
+          poolType: poolType,
+          team1Name: widget.team1Name,
+          team2Name: widget.team2Name,
+        ),
       ),
+    ).then((value) {
+      if (value == true) {
+        // Refresh both pools data and team count
+        _fetchMaxSlotsForPools();
+        _fetchSelectedTeamsCount(); // Add this line to refresh the team count
+      }
+    });
+  },
+  child: Text(
+    'MY Team',
+    style: TextStyle(
+      fontFamily: 'Roboto',
+      fontWeight: FontWeight.bold,
+      fontSize: 14.0,
+      color: Colors.black,
+    ),
+  ),
+  style: ButtonStyle(
+    backgroundColor: MaterialStateProperty.all<Color>(Color(0xFFFFE5C4)),
+  ),
+),
+
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ),
+
     );
   }
 }
