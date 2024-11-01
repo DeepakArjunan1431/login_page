@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:login_page/Screens/crickettabs/EditTeam.dart';
+import 'package:login_page/Screens/crickettabs/TeamMangement.dart';
+import 'package:login_page/Screens/crickettabs/fetchplayers.dart';
 
 class ExistingTeamSelection extends StatefulWidget {
   final String matchId;
@@ -144,139 +147,135 @@ Future<void> _fetchExistingTeams() async {
   }
 
  Future<void> _joinPoolWithExistingTeam(Map<String, dynamic> team) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('No user logged in');
+  try {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('No user logged in');
 
-      String poolDoc = _getPoolDocName(widget.poolType);
-      
-      DocumentSnapshot poolSnapshot = await FirebaseFirestore.instance
-          .collection('Pool')
-          .doc(poolDoc)
-          .get();
+    String poolDoc = _getPoolDocName(widget.poolType);
+    
+    // Get the current pool document
+    DocumentSnapshot poolSnapshot = await FirebaseFirestore.instance
+        .collection('Pool')
+        .doc(poolDoc)
+        .get();
 
-      if (!poolSnapshot.exists) {
-        throw Exception('Pool document does not exist');
-      }
+    if (!poolSnapshot.exists) {
+      throw Exception('Pool document does not exist');
+    }
 
-      Map<String, dynamic> data = poolSnapshot.data() as Map<String, dynamic>;
-      Map<String, dynamic> matches = data['matches'] ?? {};
-      Map<String, dynamic> matchData = matches[widget.matchId] ?? {};
+    Map<String, dynamic> data = poolSnapshot.data() as Map<String, dynamic>;
+    Map<String, dynamic> matches = data['matches'] ?? {};
+    Map<String, dynamic> matchData = matches[widget.matchId] ?? {};
 
-      String? selectedPoolName;
-      // ignore: unused_local_variable
-      int? selectedPoolSlots;
-      int maxSize = _getMaxSizeForPoolType(widget.poolType);
+    // Find an available pool
+    String? selectedPoolName;
+    int? selectedPoolSlots;
+    int maxSize = _getMaxSizeForPoolType(widget.poolType);
 
-      matchData.forEach((poolName, poolData) {
-        if (poolName != 'team1' && poolName != 'team2') {
-          int currentSlots = poolData['slots'] ?? 0;
-          if (currentSlots < maxSize && selectedPoolName == null) {
-            selectedPoolName = poolName;
-            selectedPoolSlots = currentSlots;
-          }
-        }
-      });
-
-      if (selectedPoolName == null) {
-        int newIndex = matchData.keys.where((k) => k.startsWith(widget.poolType)).length + 1;
-        selectedPoolName = '${widget.poolType} $newIndex';
-        selectedPoolSlots = 0;
-      }
-
-      // Prepare player data while preserving null values
-      List<Map<String, dynamic>> playersList = [];
-      if (team.containsKey('players') && team['players'] is List) {
-        List<dynamic> players = team['players'];
-        for (var player in players) {
-          if (player is Map<String, dynamic>) {
-            Map<String, dynamic> playerData = {
-              'PlayerId': player['PlayerId'] ?? '',
-              'PlayerName': player['PlayerName'] ?? '',
-              'TeamName': player['TeamName'] ?? '',
-              'Priority': player['Priority'] ?? 0,
-            };
-
-            // Only add PredictedRuns and PredictedWickets if they're not null
-            if (player['PredictedRuns'] != null) {
-              playerData['PredictedRuns'] = player['PredictedRuns'];
-            }
-            if (player['PredictedWickets'] != null) {
-              playerData['PredictedWickets'] = player['PredictedWickets'];
-            }
-
-            playersList.add(playerData);
-          }
+    matchData.forEach((poolName, poolData) {
+      if (poolName != 'team1' && poolName != 'team2') {
+        int currentSlots = poolData['slots'] ?? 0;
+        if (currentSlots < maxSize && selectedPoolName == null) {
+          selectedPoolName = poolName;
+          selectedPoolSlots = currentSlots;
         }
       }
+    });
 
-      // Sort players by priority
-      playersList.sort((a, b) => (b['Priority'] ?? 0).compareTo(a['Priority'] ?? 0));
+    if (selectedPoolName == null) {
+      int newIndex = matchData.keys.where((k) => k.startsWith(widget.poolType)).length + 1;
+      selectedPoolName = '${widget.poolType} $newIndex';
+      selectedPoolSlots = 0;
+    }
 
-      String newTeamId = '${team['teamId']}_${DateTime.now().millisecondsSinceEpoch}';
-
-      Map<String, dynamic> teamSelection = {
-        'teamId': newTeamId,
-        'players': playersList,
-        'team1': widget.team1Name,
-        'team2': widget.team2Name,
-      };
-
-      DocumentSnapshot userPoolSnapshot = await FirebaseFirestore.instance
-          .collection('Pool')
-          .doc(poolDoc)
-          .get();
-
-      List<dynamic> currentTeams = [];
-      if (userPoolSnapshot.exists) {
-        var userData = userPoolSnapshot.data() as Map<String, dynamic>;
-        var matchesData = userData['matches'] ?? {};
-        var matchSpecificData = matchesData[widget.matchId] ?? {};
-        var poolData = matchSpecificData[selectedPoolName] ?? {};
-        var userJoins = poolData['userJoins'] ?? {};
-        var userSpecificData = userJoins[user.uid] ?? {};
-        currentTeams = userSpecificData['teams'] ?? [];
+    // Prepare player data
+    List<Map<String, dynamic>> playersList = [];
+    if (team.containsKey('players') && team['players'] is List) {
+      List<dynamic> players = team['players'];
+      for (var player in players) {
+        if (player is Map<String, dynamic>) {
+          playersList.add({
+            'PlayerId': player['PlayerId'] ?? '',
+            'PlayerName': player['PlayerName'] ?? '',
+            'PredictedRuns': player['PredictedRuns'], // Keep null if null
+            'PredictedWickets': player['PredictedWickets'], // Keep null if null
+            'TeamName': player['TeamName'] ?? '',
+            'Priority': player['Priority'] ?? 0,
+          });
+        }
       }
+    }
 
-      currentTeams = [...currentTeams, teamSelection];
+    // Sort players by priority
+    playersList.sort((a, b) => (b['Priority'] ?? 0).compareTo(a['Priority'] ?? 0));
 
-      await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
-        'matches': {
-          widget.matchId: {
-            selectedPoolName: {
-              'slots': FieldValue.increment(1),
-              'userJoins': {
-                user.uid: {
-                  'joinCount': FieldValue.increment(1),
-                  'teams': currentTeams
-                }
+    // Generate a new unique team ID by combining the original teamId with a timestamp
+    String newTeamId = '${team['teamId']}_${DateTime.now().millisecondsSinceEpoch}';
+
+    Map<String, dynamic> teamSelection = {
+      'teamId': newTeamId,
+      'players': playersList,
+      'team1': widget.team1Name,
+      'team2': widget.team2Name,
+    };
+
+    // First, get the current teams array
+    DocumentSnapshot userPoolSnapshot = await FirebaseFirestore.instance
+        .collection('Pool')
+        .doc(poolDoc)
+        .get();
+
+    List<dynamic> currentTeams = [];
+    if (userPoolSnapshot.exists) {
+      var userData = userPoolSnapshot.data() as Map<String, dynamic>;
+      var matchesData = userData['matches'] ?? {};
+      var matchSpecificData = matchesData[widget.matchId] ?? {};
+      var poolData = matchSpecificData[selectedPoolName] ?? {};
+      var userJoins = poolData['userJoins'] ?? {};
+      var userSpecificData = userJoins[user.uid] ?? {};
+      currentTeams = userSpecificData['teams'] ?? [];
+    }
+
+    // Add the new team to the array
+    currentTeams = [...currentTeams, teamSelection];
+
+    // Update the document with the new teams array
+    await FirebaseFirestore.instance.collection('Pool').doc(poolDoc).set({
+      'matches': {
+        widget.matchId: {
+          selectedPoolName: {
+            'slots': FieldValue.increment(1),
+            'userJoins': {
+              user.uid: {
+                'joinCount': FieldValue.increment(1),
+                'teams': currentTeams
               }
             }
           }
         }
-      }, SetOptions(merge: true));
+      }
+    }, SetOptions(merge: true));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully added team to pool!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Successfully added team to pool!'),
+        backgroundColor: Colors.green,
+      ),
+    );
 
-      Navigator.pop(context, true);
+    Navigator.pop(context, true);
 
-    } catch (e) {
-      print('Error joining pool with team: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error joining the pool. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  } catch (e) {
+    print('Error joining pool with team: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error joining the pool. Please try again.'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
-
- 
+} 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -360,56 +359,186 @@ Future<void> _fetchExistingTeams() async {
                             ),
                           )
                         : ListView.builder(
-                            padding: EdgeInsets.all(16),
-                            itemCount: existingTeams.length,
-                            itemBuilder: (context, index) {
-                              var team = existingTeams[index];
-                              List<dynamic> players = team['players'] ?? [];
-
-                              return Card(
-                                elevation: 4,
-                                margin: EdgeInsets.only(bottom: 16),
-                                child: ExpansionTile(
-                                  title: Text('Team ${index + 1}'),
-                                  subtitle: Text('${players.length} Players'),
-                                  children: [
-                                    ListView.builder(
-                                      shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      itemCount: players.length,
-                                      itemBuilder: (context, playerIndex) {
-                                        var player = players[playerIndex];
-                                        return ListTile(
-                                          leading: CircleAvatar(
-                                            child: Text('${player['Priority']}'),
-                                          ),
-                                          title: Text(player['PlayerName'] ?? ''),
-                                          subtitle: Text(
-                                            'Runs: ${player['PredictedRuns'] ?? 'N/A'}, ' +
-                                            'Wickets: ${player['PredictedWickets'] ?? 'N/A'}',
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: ElevatedButton(
-                                        onPressed: () => _joinPoolWithExistingTeam(team),
-                                        child: Text('Select This Team'),
-                                        style: ButtonStyle(
-                                          backgroundColor: MaterialStateProperty.all(
-                                            Color(0xFFFFE5C4),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+  padding: EdgeInsets.all(16),
+  itemCount: existingTeams.length,
+  itemBuilder: (context, index) {
+    var team = existingTeams[index];
+    List<dynamic> players = team['players'] ?? [];
+    
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.only(bottom: 16),
+      child: ExpansionTile(
+        title: Text('Team ${index + 1}'),
+        subtitle: Text('${players.length} Players'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: () async {
+                final result = await showDialog(
+                  context: context,
+                  builder: (context) => EditTeamDialog(
+                    matchId: widget.matchId,
+                    teamId: team['teamId'],
+                    players: team['players'],
+                  ),
+                );
+                if (result == true) {
+                  _fetchExistingTeams(); // Refresh the list
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () async {
+                bool? confirm = await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Delete Team'),
+                    content: Text('Are you sure you want to delete this team?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+                
+                if (confirm == true) {
+                  await TeamManagementActions.deleteTeam(
+                    context,
+                    widget.matchId,
+                    team['teamId'],
+                  );
+                  _fetchExistingTeams(); // Refresh the list
+                }
+              },
+            ),
+          ],
+        ),
+        children: [
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: players.length,
+            itemBuilder: (context, playerIndex) {
+              var player = players[playerIndex];
+              return ListTile(
+                leading: CircleAvatar(
+                  child: Text('${player['Priority']}'),
+                ),
+                title: Text(player['PlayerName'] ?? ''),
+                subtitle: Text(
+                  'Runs: ${player['PredictedRuns'] ?? 'N/A'}, Wickets: ${player['PredictedWickets'] ?? 'N/A'}',
+                ),
+              );
+            },
+          ),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: () => _joinPoolWithExistingTeam(team),
+              child: Text('Select This Team'),
+              style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(
+                  Color(0xFFFFE5C4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  },
+)
           ),
        
+        ],
+      ),
+    );
+  }
+}
+class ConfirmJoinPoolPage extends StatelessWidget {
+  final Map<String, String> selectedPlayers;
+  final String matchId;
+
+  ConfirmJoinPoolPage({
+    required this.selectedPlayers,
+    required this.matchId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Confirm Pool Join'),
+      ),
+      body: Column(
+        children: [
+          Text('Pool Name: ${selectedPlayers['poolName']}'),
+          Text('Total Slots: ${selectedPlayers['totalSlots']}'),
+          Expanded(
+            child: ListView(
+              children: selectedPlayers.entries
+                  .where((entry) => 
+                      entry.key != 'poolName' && 
+                      entry.key != 'joinedSlots' && 
+                      entry.key != 'totalSlots')
+                  .map((entry) => ListTile(
+                title: Text(entry.value),
+              )).toList(),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Prepare players data in the format expected by MatchDetailsPage
+              Map<String, dynamic> players = {};
+              selectedPlayers.forEach((playerId, playerInfo) {
+                if (playerId != 'poolName' && 
+                    playerId != 'joinedSlots' && 
+                    playerId != 'totalSlots') {
+                  // Parse player info
+                  List<String> playerDetails = playerInfo.split(' - ');
+                  String playerName = playerDetails[0];
+                  String priorityAndTeam = playerDetails[1];
+                  
+                  // Extract priority and team name
+                  RegExp priorityRegex = RegExp(r'(\d+) \(([^)]+)\)');
+                  var match = priorityRegex.firstMatch(priorityAndTeam);
+                  
+                  int priority = match != null ? int.parse(match.group(1)!) : 0;
+                  String teamName = match != null ? match.group(2)! : 'Unknown';
+
+                  players[playerId] = {
+                    'PlayerName': playerName,
+                    'Priority': priority,
+                    'TeamName': teamName,
+                    'PredictedRuns': null,  // You might want to handle this dynamically
+                    'PredictedWickets': null,  // You might want to handle this dynamically
+                  };
+                }
+              });
+
+              // Create a result map similar to what _navigateToPoolSelection expects
+              Map<String, dynamic> result = {
+                'poolName': selectedPlayers['poolName'],
+                'joinedSlots': selectedPlayers['joinedSlots'] ?? '0',
+                'totalSlots': selectedPlayers['totalSlots'],
+                'players': players,
+              };
+
+              // Navigate back with the prepared data
+              Navigator.pop(context, result);
+            },
+            child: Text('Confirm Join'),
+          ),
         ],
       ),
     );
