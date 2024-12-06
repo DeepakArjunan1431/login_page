@@ -228,6 +228,7 @@ class _PlayerReplacementDialogState extends State<PlayerReplacementDialog> {
     );
   }
 }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
